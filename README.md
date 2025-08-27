@@ -81,6 +81,9 @@ pnpm run build
 
 # Limpiar builds
 pnpm run clean
+
+# Ejecutar seed desde contenedor Docker
+pnpm run seed:docker
 ```
 
 ### Scripts específicos:
@@ -170,10 +173,130 @@ Los modelos y datos se implementarán en el **Hito 1**.
 - Error handling middleware
 
 ### API Endpoints:
+
+#### Base
 - `GET /health` - Health check
 - `GET /api/` - Info de la API
 
-Más endpoints se implementarán en el **Hito 1**.
+#### Tickets (`/api/tickets`)
+- `GET /api/tickets` - Listar tickets con paginación y filtros
+- `GET /api/tickets/:id` - Obtener ticket por ID
+- `POST /api/tickets` - Crear nuevo ticket
+- `PUT /api/tickets/:id` - Actualizar ticket
+- `DELETE /api/tickets/:id` - Eliminar ticket
+
+#### Clients (`/api/clients`)
+- `GET /api/clients` - Listar clientes (con búsqueda opcional)
+- `GET /api/clients/:codigoCliente` - Obtener cliente específico
+- `GET /api/clients/:codigoCliente/contracts` - Obtener contratos del cliente
+
+#### Contracts (`/api/contracts`)
+- `GET /api/contracts` - Listar contratos (con búsqueda por número de serie)
+- `GET /api/contracts/:id` - Obtener contrato específico
+
+#### Technicians (`/api/technicians`)
+- `GET /api/technicians` - Listar técnicos (para desplegables)
+
+### Ejemplos de uso con curl:
+
+#### 1. Listar tickets con paginación y filtros:
+```bash
+# Todos los tickets (página 1, 20 por página)
+curl "http://localhost:3000/api/tickets"
+
+# Con filtros
+curl "http://localhost:3000/api/tickets?page=1&pageSize=10&estadoTicket=ABIERTO&urgencia=ALTA&codigoCliente=CLI001&q=impresora"
+
+# Por rango de fechas
+curl "http://localhost:3000/api/tickets?fechaDesde=2024-08-01T00:00:00.000Z&fechaHasta=2024-08-31T23:59:59.999Z"
+```
+
+#### 2. Obtener ticket específico:
+```bash
+curl "http://localhost:3000/api/tickets/T202508-0001"
+```
+
+#### 3. Crear nuevo ticket:
+```bash
+curl -X POST "http://localhost:3000/api/tickets" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "usuarioCreacion": "admin",
+    "tipoTicket": "IMPRESORA_HARDWARE",
+    "categoria": "Atasco de papel",
+    "subCategoria": "Bandeja principal",
+    "codigoCliente": "CLI001",
+    "razonSocial": "Empresa Nacional de Telecomunicaciones ANTEL",
+    "contacto": "Juan Pérez",
+    "telefono": "2902-1000",
+    "email": "juan.perez@antel.com.uy",
+    "origen": "TELEFONO",
+    "urgencia": "MEDIA",
+    "detalle": "Impresora presenta atascos frecuentes en bandeja principal"
+  }'
+```
+
+#### 4. Actualizar ticket:
+```bash
+curl -X PUT "http://localhost:3000/api/tickets/T202508-0001" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "estadoTicket": "EN_PROCESO",
+    "technicianId": "clz1234567890",
+    "detalle": "Ticket asignado a técnico para revisión en sitio"
+  }'
+```
+
+#### 5. Listar clientes:
+```bash
+# Todos los clientes
+curl "http://localhost:3000/api/clients"
+
+# Buscar cliente
+curl "http://localhost:3000/api/clients?q=ANTEL"
+```
+
+#### 6. Obtener contratos de un cliente:
+```bash
+curl "http://localhost:3000/api/clients/CLI001/contracts"
+```
+
+#### 7. Listar técnicos:
+```bash
+curl "http://localhost:3000/api/technicians"
+```
+
+### Respuesta típica de listado de tickets:
+```json
+{
+  "data": [
+    {
+      "numeroTicket": "T202508-0001",
+      "fechaCreacion": "2024-08-01T09:30:00.000Z",
+      "usuarioCreacion": "admin",
+      "tipoTicket": "IMPRESORA_HARDWARE",
+      "categoria": "Atasco de papel",
+      "codigoCliente": "CLI001",
+      "razonSocial": "Empresa Nacional de Telecomunicaciones ANTEL",
+      "estadoTicket": "ASIGNADA",
+      "origen": "TELEFONO",
+      "urgencia": "MEDIA",
+      "client": {
+        "codigoCliente": "CLI001",
+        "razonSocial": "Empresa Nacional de Telecomunicaciones ANTEL"
+      },
+      "technician": {
+        "id": "clz1234567890",
+        "nombre": "Sandra López"
+      }
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "total": 20,
+  "totalPages": 1
+}
+```
 
 ## 📋 Estado del Proyecto
 
@@ -185,14 +308,19 @@ Más endpoints se implementarán en el **Hito 1**.
 - [x] Layout Argon Dashboard
 - [x] Rutas básicas del frontend
 - [x] Health checks y configuración básica
+- [x] **Modelos de base de datos (Prisma)** ✨
+- [x] **CRUD completo de tickets** ✨
+- [x] **API endpoints para clientes, contratos y técnicos** ✨
+- [x] **Validaciones con Zod** ✨
+- [x] **Paginación y filtros avanzados** ✨
+- [x] **Seeding de datos realistas** ✨
 
-### 🚧 Por implementar (Hito 1):
-- [ ] Modelos de base de datos (Prisma)
-- [ ] CRUD de tickets
+### 🚧 Por implementar:
 - [ ] Autenticación y autorización
-- [ ] Validaciones completas
 - [ ] Tests unitarios e integración
-- [ ] Funcionalidad completa del dashboard
+- [ ] Funcionalidad completa del dashboard (frontend)
+- [ ] Integración frontend-backend
+- [ ] Reportes y estadísticas
 
 ## 🤝 Contribución
 
