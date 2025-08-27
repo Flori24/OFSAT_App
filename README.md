@@ -109,27 +109,164 @@ pnpm preview          # Vista previa del build
 
 ### Servicios incluidos:
 
-- **postgres**: Base de datos PostgreSQL 16
-- **api**: API Backend con hot-reload
-- **web**: Frontend con hot-reload
+- **postgres**: Base de datos PostgreSQL 16 con volumen persistente
+- **api**: API Backend con hot-reload y bind mounts para desarrollo
+- **web**: Frontend con hot-reload y bind mounts para desarrollo
 
-### Comandos útiles:
+### Comandos Docker principales:
 
 ```bash
-# Iniciar servicios
+# 🚀 Iniciar servicios con build (Recomendado)
+pnpm run dev:docker
+
+# Equivalente a:
 docker compose -f docker/docker-compose.yml up -d --build
 
-# Ver logs
+# Ver logs en tiempo real
 docker compose -f docker/docker-compose.yml logs -f
+
+# Ver logs de un servicio específico
+docker compose -f docker/docker-compose.yml logs -f api
+docker compose -f docker/docker-compose.yml logs -f web
 
 # Detener servicios
 docker compose -f docker/docker-compose.yml down
 
+# Detener y limpiar volúmenes (⚠️ Elimina datos de BD)
+docker compose -f docker/docker-compose.yml down -v
+```
+
+### 🗃️ Migraciones y Seeds:
+
+```bash
+# Ejecutar migraciones desde contenedor Docker
+docker compose -f docker/docker-compose.yml exec api pnpm prisma:migrate
+
+# Ejecutar seeds desde contenedor Docker  
+docker compose -f docker/docker-compose.yml exec api pnpm prisma:seed
+
+# O usando el script del workspace:
+pnpm run seed:docker
+```
+
+### 🔧 Comandos de mantenimiento:
+
+```bash
 # Reiniciar un servicio específico
 docker compose -f docker/docker-compose.yml restart api
+docker compose -f docker/docker-compose.yml restart web
+docker compose -f docker/docker-compose.yml restart postgres
 
-# Acceder a la base de datos
+# Reconstruir un servicio específico
+docker compose -f docker/docker-compose.yml up -d --build api
+
+# Acceder al bash de un contenedor
+docker compose -f docker/docker-compose.yml exec api bash
+docker compose -f docker/docker-compose.yml exec web bash
+
+# Acceder a PostgreSQL
 docker compose -f docker/docker-compose.yml exec postgres psql -U ofsat_app -d ofsat_app
+
+# Generar cliente Prisma en contenedor
+docker compose -f docker/docker-compose.yml exec api pnpm prisma:gen
+```
+
+### 🐞 Troubleshooting Docker:
+
+#### 1. **Error de puerto ocupado (EADDRINUSE)**
+```bash
+# Verificar qué proceso usa el puerto
+sudo lsof -i :3000
+sudo lsof -i :5173
+sudo lsof -i :5432
+
+# Detener los servicios Docker actuales
+docker compose -f docker/docker-compose.yml down
+
+# Reiniciar servicios
+pnpm run dev:docker
+```
+
+#### 2. **Base de datos no responde**
+```bash
+# Verificar estado del contenedor de PostgreSQL
+docker compose -f docker/docker-compose.yml ps postgres
+
+# Ver logs de PostgreSQL
+docker compose -f docker/docker-compose.yml logs postgres
+
+# Reiniciar solo PostgreSQL
+docker compose -f docker/docker-compose.yml restart postgres
+
+# Si persiste, recrear el volumen (⚠️ Elimina datos)
+docker compose -f docker/docker-compose.yml down -v
+pnpm run dev:docker
+docker compose -f docker/docker-compose.yml exec api pnpm prisma:migrate
+docker compose -f docker/docker-compose.yml exec api pnpm prisma:seed
+```
+
+#### 3. **API no puede conectar a PostgreSQL**
+```bash
+# Verificar variables de entorno
+docker compose -f docker/docker-compose.yml exec api env | grep DATABASE
+
+# Verificar que PostgreSQL esté healthy
+docker compose -f docker/docker-compose.yml ps
+
+# Si postgres no está healthy, esperar o reiniciar
+docker compose -f docker/docker-compose.yml restart postgres
+```
+
+#### 4. **Cambios en código no se reflejan (Hot-reload no funciona)**
+```bash
+# Verificar bind mounts en docker-compose.yml
+docker compose -f docker/docker-compose.yml config
+
+# Reiniciar servicio específico
+docker compose -f docker/docker-compose.yml restart api
+docker compose -f docker/docker-compose.yml restart web
+
+# Verificar logs para errores de compilación
+docker compose -f docker/docker-compose.yml logs -f api
+```
+
+#### 5. **Error "node_modules not found"**
+```bash
+# Reconstruir contenedores
+docker compose -f docker/docker-compose.yml up -d --build
+
+# Si persiste, limpiar volúmenes anonymous de node_modules
+docker compose -f docker/docker-compose.yml down
+docker volume prune -f
+pnpm run dev:docker
+```
+
+#### 6. **CORS errors en el frontend**
+```bash
+# Verificar configuración CORS en API
+docker compose -f docker/docker-compose.yml logs api | grep CORS
+
+# Verificar variables de entorno
+docker compose -f docker/docker-compose.yml exec api env | grep CORS_ORIGIN
+
+# La configuración correcta es:
+# CORS_ORIGIN=http://localhost:5173
+```
+
+### 📊 Monitoreo de servicios:
+
+```bash
+# Ver estado de todos los servicios
+docker compose -f docker/docker-compose.yml ps
+
+# Ver uso de recursos
+docker stats ofsat_postgres ofsat_api ofsat_web
+
+# Ver logs de los últimos 100 mensajes
+docker compose -f docker/docker-compose.yml logs --tail=100
+
+# Seguir logs de todos los servicios
+docker compose -f docker/docker-compose.yml logs -f
 ```
 
 ## 🗄️ Base de Datos
@@ -314,13 +451,20 @@ curl "http://localhost:3000/api/technicians"
 - [x] **Validaciones con Zod** ✨
 - [x] **Paginación y filtros avanzados** ✨
 - [x] **Seeding de datos realistas** ✨
+- [x] **Frontend completo con Vue 3 + TypeScript** ✨
+- [x] **Dashboard funcional con filtros y estadísticas** ✨
+- [x] **Formulario completo de tickets** ✨
+- [x] **Estado management con Pinia** ✨
+- [x] **Integración frontend-backend completa** ✨
+- [x] **Hot-reload en Docker para desarrollo** ✨
 
 ### 🚧 Por implementar:
 - [ ] Autenticación y autorización
 - [ ] Tests unitarios e integración
-- [ ] Funcionalidad completa del dashboard (frontend)
-- [ ] Integración frontend-backend
-- [ ] Reportes y estadísticas
+- [ ] Reportes y estadísticas avanzadas
+- [ ] Notificaciones en tiempo real
+- [ ] Subida de archivos/imágenes
+- [ ] Configuración de producción
 
 ## 🤝 Contribución
 
