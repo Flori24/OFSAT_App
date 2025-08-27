@@ -10,4 +10,103 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Models will be added in Milestone 1
+enum TipoTicket {
+  IMPRESORA_SOFTWARE
+  IMPRESORA_HARDWARE
+  INFORMATICA
+  INTERNO
+}
+
+enum EstadoTicket {
+  ABIERTO
+  ASIGNADA
+  PENDIENTE
+  PENDIENTE_CLIENTE
+  PENDIENTE_PROVEEDOR
+  EN_TRANSITO
+  PENDIENTE_RMA
+  EN_PROCESO
+}
+
+enum OrigenTicket {
+  TELEFONO
+  WEB
+  MANUAL
+}
+
+enum UrgenciaTicket {
+  NORMAL
+  MEDIA
+  ALTA
+  EXTREMA
+}
+
+model Client {
+  codigoCliente   String   @id
+  razonSocial     String
+  telefono        String?
+  email           String?
+  domicilio       String?
+  departamento    String?
+  edificio        String?
+  contacto        String?
+  contracts       Contract[]
+  tickets         Ticket[]
+  @@index([razonSocial])
+}
+
+model Technician {
+  id        String  @id @default(cuid())
+  nombre    String
+  email     String?
+  telefono  String?
+  perfil    String?
+  tickets   Ticket[]
+  @@index([nombre])
+}
+
+model Contract {
+  id           String   @id @default(cuid())
+  codigoCliente String
+  client       Client   @relation(fields: [codigoCliente], references: [codigoCliente], onDelete: Cascade)
+  fechaInicio  DateTime
+  fechaFin     DateTime?
+  tipoContrato String
+  numeroSerie  String
+  marca        String?
+  modelo       String?
+  ubicacion    String?
+  copiasNegro  Int?
+  copiasColor  Int?
+  tickets      Ticket[]
+  @@index([codigoCliente, numeroSerie])
+}
+
+model Ticket {
+  numeroTicket            String   @id
+  fechaCreacion           DateTime @default(now())
+  usuarioCreacion         String
+  tipoTicket              TipoTicket
+  categoria               String?
+  subCategoria            String?
+  subCategoria2           String?
+  codigoCliente           String
+  client                  Client   @relation(fields: [codigoCliente], references: [codigoCliente], onDelete: Restrict)
+  razonSocial             String
+  contacto                String?
+  telefono                String?
+  email                   String?
+  contratoId              String?
+  contrato                Contract? @relation(fields: [contratoId], references: [id])
+  numeroSerie             String?
+  estadoTicket            EstadoTicket @default(ABIERTO)
+  origen                  OrigenTicket
+  urgencia                UrgenciaTicket @default(NORMAL)
+  detalle                 String?
+  fechaUltimaActualizacion DateTime? 
+  fechaCierre             DateTime?
+  technicianId            String?
+  technician              Technician? @relation(fields: [technicianId], references: [id])
+  @@index([codigoCliente, estadoTicket, urgencia, technicianId])
+  @@index([fechaCreacion])
+}
