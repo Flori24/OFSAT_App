@@ -1,0 +1,21 @@
+{
+  "name": "ofsat-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "OFSAT App - Sistema de gestión de tickets",
+  "scripts": {
+    "dev:docker": "docker compose -f docker/docker-compose.yml up -d --build",
+    "dev:api": "pnpm --filter ./apps/api dev",
+    "dev:web": "pnpm --filter ./apps/web dev",
+    "build": "pnpm -r build",
+    "clean": "pnpm -r clean"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

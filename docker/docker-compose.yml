@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: ofsat_postgres
+    environment:
+      POSTGRES_DB: ofsat_app
+      POSTGRES_USER: ofsat_app
+      POSTGRES_PASSWORD: 1}{,93jxGnlgb
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ofsat_app -d ofsat_app"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile
+    container_name: ofsat_api
+    env_file:
+      - ../.env.local
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../apps/api:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    container_name: ofsat_web
+    env_file:
+      - ../.env.local
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../apps/web:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+volumes:
+  db_data:

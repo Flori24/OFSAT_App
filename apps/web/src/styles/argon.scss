@@ -1,0 +1,62 @@
+@import 'variables';
+@import 'bootstrap/scss/bootstrap';
+
+// Argon Dashboard Custom Styles
+body {
+  background-color: #f8f9fe;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: $sidebar-width;
+  height: 100vh;
+  background: linear-gradient(87deg, #5e72e4 0, #825ee4 100%);
+  z-index: 1000;
+  
+  .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.3s;
+    
+    &:hover, &.active {
+      color: white;
+    }
+  }
+}
+
+.topbar {
+  position: fixed;
+  top: 0;
+  left: $sidebar-width;
+  right: 0;
+  height: $topbar-height;
+  background: white;
+  box-shadow: 0 1px 20px rgba(0,0,0,.08);
+  z-index: 999;
+}
+
+.main-content {
+  margin-left: $sidebar-width;
+  padding-top: $topbar-height;
+  min-height: 100vh;
+}
+
+.card {
+  box-shadow: 0 0 2rem 0 rgba(136, 152, 170, 0.15);
+  border: 0;
+}
+
+.btn {
+  font-size: 0.875rem;
+  position: relative;
+  transition: all 0.15s ease;
+  letter-spacing: 0.025em;
+  text-transform: none;
+  will-change: transform;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+}
