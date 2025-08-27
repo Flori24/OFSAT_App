@@ -60,3 +60,36 @@ body {
   transform: translateY(-1px);
   box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
 }
+
+// Additional Argon styles
+.bg-gradient-danger {
+  background: linear-gradient(87deg, #f5365c 0, #f56036 100%);
+}
+
+.badge-soft-primary {
+  color: #5e72e4;
+  background-color: rgba(94, 114, 228, 0.2);
+}
+
+.table-flush {
+  td, th {
+    border-left: 0;
+    border-right: 0;
+  }
+}
+
+.icon {
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+}
+
+.font-weight-bold {
+  font-weight: 600;
+}

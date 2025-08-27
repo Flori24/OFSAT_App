@@ -1,15 +1,10 @@
 import { defineStore } from 'pinia';
-import axios from 'axios';
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
-  timeout: 10000,
-});
 
 export const useAppStore = defineStore('app', {
   state: () => ({
     loading: false,
     error: null as string | null,
+    sidebarCollapsed: false,
   }),
   
   actions: {
@@ -23,8 +18,16 @@ export const useAppStore = defineStore('app', {
     
     clearError() {
       this.error = null;
-    }
+    },
+
+    toggleSidebar() {
+      this.sidebarCollapsed = !this.sidebarCollapsed;
+    },
   }
 });
 
-export { api };
+// Export store modules
+export { useTicketsStore } from '@/stores/tickets';
+export { useClientsStore } from '@/stores/clients';
+export { useTechniciansStore } from '@/stores/technicians';
+export { useContractsStore } from '@/stores/contracts';
