@@ -33,86 +33,40 @@
       </div>
     </nav>
 
-    <!-- Top Bar -->
-    <nav class="topbar d-flex align-items-center px-4">
-      <div class="d-flex align-items-center ms-auto">
-        <!-- User Info -->
-        <div class="dropdown">
-          <button 
-            class="btn btn-link text-decoration-none d-flex align-items-center"
-            type="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >
-            <div class="user-avatar me-2">
-              <i class="fas fa-user"></i>
-            </div>
-            <div class="user-info">
-              <div class="user-name">{{ authStore.user?.displayName }}</div>
-              <div class="user-role">{{ primaryRole }}</div>
-            </div>
-            <i class="fas fa-chevron-down ms-2 text-muted"></i>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li>
-              <span class="dropdown-item-text">
-                <div class="fw-bold">{{ authStore.user?.displayName }}</div>
-                <small class="text-muted">{{ authStore.user?.username }}</small>
-              </span>
-            </li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
-              <button class="dropdown-item" @click="handleLogout">
-                <i class="fas fa-sign-out-alt me-2"></i>
-                Cerrar Sesión
-              </button>
+    <!-- Nav / Topbar -->
+    <nav class="navbar navbar-top navbar-expand navbar-dark bg-primary border-bottom">
+      <div class="container-fluid">
+        <div class="collapse navbar-collapse">
+          <ul class="navbar-nav align-items-center ms-auto">
+            <li class="nav-item dropdown">
+              <a class="nav-link pr-0 dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="mb-0 text-sm fw-bold">
+                  {{ auth.user?.displayName || auth.user?.username || 'Usuario' }}
+                </span>
+              </a>
+              <div class="dropdown-menu dropdown-menu-end">
+                <a class="dropdown-item" href="#" @click.prevent="onLogout">Salir</a>
+              </div>
             </li>
           </ul>
         </div>
       </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="main-content">
-      <div class="container-fluid py-4">
-        <RouterView />
-      </div>
-    </main>
+    <!-- Aquí va el slot para páginas -->
+    <div class="container-fluid mt-4">
+      <RouterView />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { RouterView, useRouter } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
-
+import { RouterView } from 'vue-router';
+import { useAuthStore } from '@/store/auth';
+import { useRouter } from 'vue-router';
+const auth = useAuthStore();
 const router = useRouter();
-const authStore = useAuthStore();
-
-// Get primary role for display
-const primaryRole = computed(() => {
-  const roles = authStore.user?.roles || [];
-  if (roles.includes('ADMIN')) return 'Administrador';
-  if (roles.includes('GESTOR')) return 'Gestor';
-  if (roles.includes('TECNICO')) return 'Técnico';
-  if (roles.includes('LECTOR')) return 'Lector';
-  return 'Usuario';
-});
-
-// Check permissions
-const canCreateTickets = computed(() => {
-  return authStore.isAdmin || authStore.isGestor;
-});
-
-// Handle logout
-const handleLogout = async () => {
-  try {
-    await authStore.logout();
-    router.push('/login');
-  } catch (error) {
-    console.error('Logout error:', error);
-  }
-};
+function onLogout() { auth.logout(); router.push('/login'); }
 </script>
 
 <style scoped>

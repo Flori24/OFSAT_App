@@ -7,7 +7,7 @@
         <p class="text-muted mb-0">Gestiona y revisa todos los tickets del sistema</p>
       </div>
       <div class="col-auto">
-        <router-link to="/tickets/new" class="btn btn-primary">
+        <router-link v-if="auth.hasRole('ADMIN') || auth.hasRole('GESTOR')" to="/tickets/new" class="btn btn-primary">
           <i class="fas fa-plus me-2"></i>
           Nuevo Ticket
         </router-link>
@@ -351,11 +351,13 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTicketsStore, useClientsStore, useTechniciansStore } from '@/store';
+import { useAuthStore } from '@/store/auth';
 
 const router = useRouter();
 const ticketsStore = useTicketsStore();
 const clientsStore = useClientsStore();
 const techniciansStore = useTechniciansStore();
+const auth = useAuthStore();
 
 // Filters
 const filters = ref({
