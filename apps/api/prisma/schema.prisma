@@ -48,6 +48,35 @@ enum Role {
   LECTOR
 }
 
+enum TipoAccion {
+  DIAGNOSTICO
+  REPARACION
+  SUSTITUCION
+  CONFIGURACION
+  LLAMADA
+  REVISION
+}
+
+enum EstadoTarea {
+  PENDIENTE
+  EN_CURSO
+  FINALIZADA
+  CANCELADA
+}
+
+enum ResultadoTarea {
+  RESUELTO
+  NO_RESUELTO
+  PENDIENTE_PIEZAS
+  ESCALADO
+}
+
+enum UbicacionTarea {
+  REMOTA
+  CLIENTE
+  TALLER
+}
+
 model User {
   id           String    @id @default(cuid())
   username     String    @unique
@@ -57,6 +86,7 @@ model User {
   isActive     Boolean   @default(true)
   roles        Role[]    // Postgres enum array
   technician   Technician?
+  intervenciones Intervencion[] @relation("IntervencionesDeTecnico")
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
@@ -130,6 +160,50 @@ model Ticket {
   fechaCierre             DateTime?
   technicianId            String?
   technician              Technician? @relation(fields: [technicianId], references: [id])
+  intervenciones          Intervencion[]
   @@index([codigoCliente, estadoTicket, urgencia, technicianId])
   @@index([fechaCreacion])
+}
+
+model Intervencion {
+  id                    String   @id @default(cuid())
+  numeroTicket          String
+  ticket                Ticket   @relation(fields: [numeroTicket], references: [numeroTicket], onDelete: Cascade)
+  fechaHoraProgramada   DateTime?
+  fechaHoraInicio       DateTime?
+  fechaHoraFin          DateTime?
+  tecnicoAsignadoId     String
+  tecnico               User     @relation("IntervencionesDeTecnico", fields: [tecnicoAsignadoId], references: [id])
+  tipoAccion            TipoAccion
+  descripcion           String?
+  estadoTarea           EstadoTarea @default(PENDIENTE)
+  duracionMinutos       Int?
+  costeEstimado         Decimal? @db.Decimal(12,2)
+  resultado             ResultadoTarea?
+  firmaClienteUrl       String?
+  ubicacion             UbicacionTarea?
+  adjuntosJson          Json?
+  materiales            IntervencionMaterial[]
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([numeroTicket])
+  @@index([tecnicoAsignadoId])
+  @@index([estadoTarea])
+}
+
+model IntervencionMaterial {
+  id                  String      @id @default(cuid())
+  intervencionId      String
+  intervencion        Intervencion @relation(fields: [intervencionId], references: [id], onDelete: Cascade)
+  codigoArticulo      String
+  unidadesUtilizadas  Decimal     @db.Decimal(18,6)
+  precio              Decimal     @db.Decimal(12,2)
+  descuento           Decimal     @db.Decimal(5,2) // porcentaje 0-100
+  importeTotal        Decimal     @db.Decimal(12,2) // calculado = unidades * precio * (1 - desc/100)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@index([intervencionId])
+  @@index([codigoArticulo])
 }

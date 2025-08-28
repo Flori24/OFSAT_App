@@ -5,6 +5,7 @@ import ticketsRouter from './tickets';
 import clientsRouter from './clients';
 import contractsRouter from './contracts';
 import techniciansRouter from './technicians';
+import intervencionesRouter from './intervenciones';
 
 const router = Router();
 
@@ -19,7 +20,8 @@ router.get('/', (req, res) => {
       tickets: '/api/tickets',
       clients: '/api/clients', 
       contracts: '/api/contracts',
-      technicians: '/api/technicians'
+      technicians: '/api/technicians',
+      intervenciones: '/api/intervenciones'
     }
   });
 });
@@ -31,5 +33,6 @@ router.use('/tickets', ticketsRouter);
 router.use('/clients', clientsRouter);
 router.use('/contracts', contractsRouter);
 router.use('/technicians', techniciansRouter);
+router.use('/', intervencionesRouter);
 
 export default router;
