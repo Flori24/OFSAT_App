@@ -1,7 +1,7 @@
 <template>
-  <div class="container mt-7">
-    <div class="row justify-content-center">
-      <div class="col-md-5">
+  <div class="container-fluid login-container">
+    <div class="row justify-content-center align-items-center min-vh-100">
+      <div class="col-12 col-sm-8 col-md-6 col-lg-5 col-xl-4">
         <div class="card shadow">
           <div class="card-header bg-transparent">
             <h4 class="mb-0">Iniciar sesión</h4>
@@ -51,4 +51,42 @@ async function onSubmit() {
   router.replace((route.query.r as string) || '/tickets');
 }
 </script>
+
+<style scoped>
+.login-container {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 1rem;
+}
+
+@media (max-width: 575.98px) {
+  .login-container {
+    padding: 0.5rem;
+  }
+  
+  .card {
+    border-radius: 0.5rem;
+  }
+  
+  .card-header,
+  .card-body {
+    padding: 1.25rem;
+  }
+  
+  .btn {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 374.98px) {
+  .login-container {
+    padding: 0.25rem;
+  }
+  
+  .card-header,
+  .card-body {
+    padding: 1rem;
+  }
+}
+</style>
 

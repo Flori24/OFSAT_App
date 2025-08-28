@@ -1,6 +1,6 @@
 <template>
   <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-responsive">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Cambiar Contraseña</h5>
@@ -156,5 +156,43 @@ onMounted(async () => {
 
 .alert-warning {
   border-left: 4px solid #fb6340;
+}
+
+/* Responsive modal styles */
+@media (max-width: 767.98px) {
+  .modal-dialog-responsive {
+    margin: 0.5rem;
+    max-width: calc(100% - 1rem);
+  }
+  
+  .modal-body {
+    padding: 1rem;
+  }
+  
+  .modal-header {
+    padding: 1rem 1rem 0.5rem;
+  }
+  
+  .modal-footer {
+    padding: 0.5rem 1rem 1rem;
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+  
+  .modal-footer .btn {
+    width: 100%;
+    margin: 0;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .modal-dialog-responsive {
+    margin: 0.25rem;
+    max-width: calc(100% - 0.5rem);
+  }
+  
+  .modal-body {
+    padding: 0.75rem;
+  }
 }
 </style>

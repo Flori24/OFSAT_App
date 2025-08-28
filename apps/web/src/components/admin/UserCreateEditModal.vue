@@ -1,6 +1,6 @@
 <template>
   <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5);" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-responsive">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">
@@ -286,5 +286,60 @@ onMounted(() => {
 .spinner-border-sm {
   width: 1rem;
   height: 1rem;
+}
+
+/* Responsive modal styles */
+@media (max-width: 767.98px) {
+  .modal-dialog-responsive {
+    margin: 0.5rem;
+    max-width: calc(100% - 1rem);
+  }
+  
+  .modal-body {
+    padding: 1rem;
+  }
+  
+  .modal-header {
+    padding: 1rem 1rem 0.5rem;
+  }
+  
+  .modal-footer {
+    padding: 0.5rem 1rem 1rem;
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+  
+  .modal-footer .btn {
+    width: 100%;
+    margin: 0;
+  }
+  
+  .row .col-md-6 {
+    margin-bottom: 1rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .modal-dialog-responsive {
+    margin: 0.25rem;
+    max-width: calc(100% - 0.5rem);
+    height: calc(100vh - 0.5rem);
+  }
+  
+  .modal-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1rem;
+  }
 }
 </style>
