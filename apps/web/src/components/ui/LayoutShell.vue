@@ -29,6 +29,16 @@
               Nuevo Ticket
             </router-link>
           </li>
+          <li class="nav-item" v-if="auth.hasRole('ADMIN')">
+            <router-link 
+              to="/admin/users" 
+              class="nav-link d-flex align-items-center py-3"
+              active-class="active"
+            >
+              <i class="fas fa-users me-3"></i>
+              Usuarios
+            </router-link>
+          </li>
         </ul>
       </div>
     </nav>
@@ -38,14 +48,15 @@
       <div class="container-fluid">
         <div class="collapse navbar-collapse">
           <ul class="navbar-nav align-items-center ms-auto">
-            <li class="nav-item dropdown">
-              <a class="nav-link pr-0 dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <li class="nav-item dropdown" :class="{ show: showUserMenu }">
+              <a class="nav-link pr-0 dropdown-toggle" href="#" role="button" @click.prevent="toggleUserMenu">
                 <span class="mb-0 text-sm fw-bold">
                   {{ auth.user?.displayName || auth.user?.username || 'Usuario' }}
                 </span>
               </a>
-              <div class="dropdown-menu dropdown-menu-end">
+              <div class="dropdown-menu dropdown-menu-end" :class="{ show: showUserMenu }">
                 <a class="dropdown-item" href="#" @click.prevent="onLogout">Salir</a>
+                <a class="dropdown-item" href="#" @click.prevent="onForceLogout">Limpiar Sesión</a>
               </div>
             </li>
           </ul>
@@ -61,12 +72,32 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue';
 import { RouterView } from 'vue-router';
 import { useAuthStore } from '@/store/auth';
 import { useRouter } from 'vue-router';
+
 const auth = useAuthStore();
 const router = useRouter();
-function onLogout() { auth.logout(); router.push('/login'); }
+const showUserMenu = ref(false);
+
+const canCreateTickets = computed(() => {
+  return auth.hasRole('ADMIN') || auth.hasRole('GESTOR');
+});
+
+function toggleUserMenu() {
+  showUserMenu.value = !showUserMenu.value;
+}
+
+function onLogout() { 
+  auth.logout(); 
+  router.push('/login'); 
+  showUserMenu.value = false;
+}
+
+function onForceLogout() {
+  auth.forceLogout();
+}
 </script>
 
 <style scoped>

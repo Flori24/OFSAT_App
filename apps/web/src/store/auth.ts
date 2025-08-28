@@ -11,7 +11,10 @@ export const useAuthStore = defineStore('auth', {
     error: '' as string | '',
   }),
   getters: {
-    isAuthenticated: (s) => !!s.token,
+    isAuthenticated: (s) => {
+      console.log('isAuthenticated check:', { token: !!s.token, user: !!s.user });
+      return !!s.token && !!s.user;
+    },
     hasRole: (s) => (r: string) => s.user?.roles?.includes(r) || false,
   },
   actions: {
@@ -31,13 +34,26 @@ export const useAuthStore = defineStore('auth', {
     },
     async fetchMe() {
       if (!this.token) return;
-      const { data } = await api.get('/api/auth/me');
-      this.user = data.user;
+      try {
+        const { data } = await api.get('/api/auth/me');
+        this.user = data.user;
+      } catch (error) {
+        console.error('Error fetching user:', error);
+        this.logout();
+        throw error;
+      }
     },
     logout() {
       this.token = '';
       this.user = null;
       localStorage.removeItem('access_token');
+      console.log('User logged out');
+    },
+    forceLogout() {
+      localStorage.clear();
+      this.token = '';
+      this.user = null;
+      window.location.href = '/login';
     },
   },
 });

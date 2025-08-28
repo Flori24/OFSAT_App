@@ -12,6 +12,16 @@ app.use(router);
 import { useAuthStore } from './store/auth';
 const auth = useAuthStore();
 // Intentar recuperar /me si hay token
-auth.fetchMe().finally(() => {
+if (auth.token) {
+  console.log('Token found in localStorage, verifying...');
+  auth.fetchMe().catch((error) => {
+    console.log('Token verification failed:', error);
+    // Si falla, el logout ya se ejecutó en fetchMe
+  }).finally(() => {
+    console.log('Auth verification complete, mounting app');
+    app.mount('#app');
+  });
+} else {
+  console.log('No token found, mounting app directly');
   app.mount('#app');
-});
+}
