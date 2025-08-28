@@ -1,6 +1,12 @@
-import { PrismaClient, TipoTicket, EstadoTicket, OrigenTicket, UrgenciaTicket } from '@prisma/client';
+import { PrismaClient, TipoTicket, EstadoTicket, OrigenTicket, UrgenciaTicket, Role } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
+
+// Password hashing function
+async function pass(password: string): Promise<string> {
+  return await bcrypt.hash(password, 12);
+}
 
 async function main() {
   console.log('Seeding database...');
@@ -10,6 +16,55 @@ async function main() {
   await prisma.contract.deleteMany();
   await prisma.technician.deleteMany();
   await prisma.client.deleteMany();
+  await prisma.user.deleteMany();
+
+  // Usuarios base
+  const [admin, gestor, tecnico, lector] = await Promise.all([
+    prisma.user.upsert({
+      where: { username: 'admin' },
+      update: {},
+      create: {
+        username: 'admin',
+        email: 'admin@ofsat.local',
+        displayName: 'Administrador',
+        passwordHash: await pass('Admin.2025!'),
+        roles: [Role.ADMIN],
+      },
+    }),
+    prisma.user.upsert({
+      where: { username: 'gestor' },
+      update: {},
+      create: {
+        username: 'gestor',
+        email: 'gestor@ofsat.local',
+        displayName: 'Gestor',
+        passwordHash: await pass('Gestor.2025!'),
+        roles: [Role.GESTOR],
+      },
+    }),
+    prisma.user.upsert({
+      where: { username: 'tecnico' },
+      update: {},
+      create: {
+        username: 'tecnico',
+        email: 'tecnico@ofsat.local',
+        displayName: 'Técnico',
+        passwordHash: await pass('Tecnico.2025!'),
+        roles: [Role.TECNICO],
+      },
+    }),
+    prisma.user.upsert({
+      where: { username: 'lector' },
+      update: {},
+      create: {
+        username: 'lector',
+        email: 'lector@ofsat.local',
+        displayName: 'Lector',
+        passwordHash: await pass('Lector.2025!'),
+        roles: [Role.LECTOR],
+      },
+    }),
+  ]);
 
   // Seed Clients
   const clients = await prisma.client.createMany({
@@ -111,6 +166,14 @@ async function main() {
 
   // Get created technicians for reference
   const techniciansList = await prisma.technician.findMany();
+
+  // Enlaza técnico (si existe) con user tecnico
+  if (techniciansList[0]) {
+    await prisma.technician.update({
+      where: { id: techniciansList[0].id },
+      data: { userId: tecnico.id },
+    });
+  }
 
   // Seed Contracts
   const contracts = await prisma.contract.createMany({
@@ -602,10 +665,16 @@ async function main() {
 
   console.log('Database seeded successfully!');
   console.log(`Created:`);
+  console.log(`- 4 users (admin, gestor, tecnico, lector)`);
   console.log(`- ${clients.count} clients`);
   console.log(`- ${technicians.count} technicians`);
   console.log(`- ${contracts.count} contracts`);
   console.log(`- ${ticketData.length} tickets`);
+  console.log(`\nDefault user credentials:`);
+  console.log(`- admin / Admin.2025!`);
+  console.log(`- gestor / Gestor.2025!`);
+  console.log(`- tecnico / Tecnico.2025!`);
+  console.log(`- lector / Lector.2025!`);
 }
 
 main()

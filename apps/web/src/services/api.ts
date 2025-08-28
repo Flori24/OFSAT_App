@@ -129,13 +129,18 @@ export interface TicketFilters {
 
 // Create axios instance
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
   timeout: 10000,
 });
 
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
+    // Add auth token if available
+    const token = localStorage.getItem('auth-token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
@@ -150,6 +155,19 @@ api.interceptors.response.use(
   },
   (error) => {
     console.error('API Error:', error.response?.data || error.message);
+    
+    // Handle 401 errors (unauthorized) - redirect to login
+    if (error.response?.status === 401) {
+      // Clear stored token
+      localStorage.removeItem('auth-token');
+      delete api.defaults.headers.common['Authorization'];
+      
+      // Redirect to login if not already there
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    
     return Promise.reject(error);
   }
 );
@@ -160,6 +178,30 @@ export const apiService = {
   health: async () => {
     const response = await api.get('/health');
     return response.data;
+  },
+
+  // Authentication
+  auth: {
+    login: async (credentials: { username: string; password: string }) => {
+      const response = await api.post('/api/auth/login', credentials);
+      return response.data;
+    },
+
+    me: async () => {
+      const response = await api.get('/api/auth/me');
+      return response.data;
+    },
+
+    register: async (userData: {
+      username: string;
+      displayName: string;
+      email?: string;
+      password: string;
+      roles: string[];
+    }) => {
+      const response = await api.post('/api/auth/register', userData);
+      return response.data;
+    },
   },
 
   // Tickets

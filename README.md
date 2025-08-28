@@ -305,6 +305,7 @@ Los modelos y datos se implementarán en el **Hito 1**.
 - TypeScript
 - Prisma ORM
 - Zod (Validación)
+- JWT Authentication (jsonwebtoken + bcrypt)
 - CORS
 - Morgan (Logging)
 - Error handling middleware
@@ -334,28 +335,133 @@ Los modelos y datos se implementarán en el **Hito 1**.
 #### Technicians (`/api/technicians`)
 - `GET /api/technicians` - Listar técnicos (para desplegables)
 
+#### Authentication (`/api/auth`)
+- `POST /api/auth/login` - Login de usuario (obtener JWT token)
+- `GET /api/auth/me` - Obtener información del usuario autenticado
+- `POST /api/auth/register` - Registrar nuevo usuario (solo ADMIN)
+
+#### Users (`/api/users`)
+- `GET /api/users` - Listar usuarios (solo ADMIN)
+- `GET /api/users/:id` - Obtener usuario específico (solo ADMIN)
+- `POST /api/users` - Crear nuevo usuario (solo ADMIN)
+- `PUT /api/users/:id` - Actualizar usuario (solo ADMIN)
+- `POST /api/users/:id/reset-password` - Resetear contraseña (solo ADMIN)
+- `POST /api/users/:id/link-technician` - Vincular usuario a técnico (solo ADMIN)
+- `POST /api/users/:id/unlink-technician` - Desvincular técnico (solo ADMIN)
+
+### 🔐 Autenticación y Roles
+
+El sistema implementa autenticación JWT con los siguientes roles:
+
+- **ADMIN**: Acceso completo al sistema
+- **GESTOR**: Gestión de tickets y operaciones principales
+- **TECNICO**: Acceso a tickets asignados
+- **LECTOR**: Solo lectura
+
+#### Protección de rutas:
+
+##### Tickets (`/api/tickets`):
+- `GET /api/tickets`, `GET /api/tickets/:id` - Requiere autenticación
+- `POST /api/tickets` - Requiere ADMIN o GESTOR
+- `PUT /api/tickets/:id`, `DELETE /api/tickets/:id` - ADMIN/GESTOR tienen acceso completo, TECNICO solo a tickets asignados
+
+##### Auth y Users:
+- Todas las rutas de `/api/users` requieren rol ADMIN
+- `POST /api/auth/register` requiere rol ADMIN
+- `POST /api/auth/login` y `GET /api/auth/me` son públicas/autenticadas
+
 ### Ejemplos de uso con curl:
+
+#### Autenticación:
+
+```bash
+# 1. Login (obtener token JWT)
+curl -X POST "http://localhost:3000/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "admin123"
+  }'
+
+# Respuesta:
+# {
+#   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+#   "user": {
+#     "id": "clz1234567890",
+#     "username": "admin",
+#     "displayName": "Administrador",
+#     "roles": ["ADMIN"]
+#   }
+# }
+
+# 2. Obtener información del usuario autenticado
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:3000/api/auth/me"
+
+# 3. Registrar nuevo usuario (solo ADMIN)
+curl -X POST "http://localhost:3000/api/auth/register" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "tecnico1",
+    "displayName": "Juan Técnico",
+    "email": "juan@empresa.com",
+    "password": "password123",
+    "roles": ["TECNICO"]
+  }'
+```
+
+#### Gestión de usuarios:
+
+```bash
+# Listar todos los usuarios (solo ADMIN)
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:3000/api/users"
+
+# Crear usuario (solo ADMIN)
+curl -X POST "http://localhost:3000/api/users" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "gestor1",
+    "displayName": "María Gestora",
+    "email": "maria@empresa.com",
+    "password": "password123",
+    "roles": ["GESTOR"]
+  }'
+
+# Resetear contraseña (solo ADMIN)
+curl -X POST "http://localhost:3000/api/users/USER_ID/reset-password" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"password": "nuevaPassword123"}'
+```
 
 #### 1. Listar tickets con paginación y filtros:
 ```bash
-# Todos los tickets (página 1, 20 por página)
-curl "http://localhost:3000/api/tickets"
+# Todos los tickets (página 1, 20 por página) - REQUIERE AUTH
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:3000/api/tickets"
 
 # Con filtros
-curl "http://localhost:3000/api/tickets?page=1&pageSize=10&estadoTicket=ABIERTO&urgencia=ALTA&codigoCliente=CLI001&q=impresora"
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:3000/api/tickets?page=1&pageSize=10&estadoTicket=ABIERTO&urgencia=ALTA&codigoCliente=CLI001&q=impresora"
 
 # Por rango de fechas
-curl "http://localhost:3000/api/tickets?fechaDesde=2024-08-01T00:00:00.000Z&fechaHasta=2024-08-31T23:59:59.999Z"
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:3000/api/tickets?fechaDesde=2024-08-01T00:00:00.000Z&fechaHasta=2024-08-31T23:59:59.999Z"
 ```
 
 #### 2. Obtener ticket específico:
 ```bash
-curl "http://localhost:3000/api/tickets/T202508-0001"
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  "http://localhost:3000/api/tickets/T202508-0001"
 ```
 
-#### 3. Crear nuevo ticket:
+#### 3. Crear nuevo ticket (requiere ADMIN o GESTOR):
 ```bash
 curl -X POST "http://localhost:3000/api/tickets" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "usuarioCreacion": "admin",
@@ -373,9 +479,10 @@ curl -X POST "http://localhost:3000/api/tickets" \
   }'
 ```
 
-#### 4. Actualizar ticket:
+#### 4. Actualizar ticket (requiere permisos):
 ```bash
 curl -X PUT "http://localhost:3000/api/tickets/T202508-0001" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "estadoTicket": "EN_PROCESO",
@@ -457,9 +564,9 @@ curl "http://localhost:3000/api/technicians"
 - [x] **Estado management con Pinia** ✨
 - [x] **Integración frontend-backend completa** ✨
 - [x] **Hot-reload en Docker para desarrollo** ✨
+- [x] **Autenticación JWT con roles** ✨
 
 ### 🚧 Por implementar:
-- [ ] Autenticación y autorización
 - [ ] Tests unitarios e integración
 - [ ] Reportes y estadísticas avanzadas
 - [ ] Notificaciones en tiempo real

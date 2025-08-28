@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { ticketCreateSchema, ticketUpdateSchema, ticketQuerySchema } from '../schemas/ticket';
+import { requireAuth, requireRoles } from '../middleware/auth';
+import { Role } from '@prisma/client';
 
 const router = Router();
 
 // GET /api/tickets - List tickets with pagination and filtering
-router.get('/', async (req, res, next) => {
+router.get('/', requireAuth, async (req, res, next) => {
   try {
     const query = ticketQuerySchema.parse(req.query);
     const { page, pageSize, codigoCliente, technicianId, estadoTicket, urgencia, fechaDesde, fechaHasta, q } = query;
@@ -71,7 +73,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // GET /api/tickets/:id - Get single ticket
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', requireAuth, async (req, res, next) => {
   try {
     const ticket = await prisma.ticket.findUnique({
       where: { numeroTicket: req.params.id },
@@ -114,7 +116,7 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // POST /api/tickets - Create new ticket
-router.post('/', async (req, res, next) => {
+router.post('/', requireAuth, requireRoles(Role.ADMIN, Role.GESTOR), async (req, res, next) => {
   try {
     const data = ticketCreateSchema.parse(req.body);
 
@@ -196,19 +198,38 @@ router.post('/', async (req, res, next) => {
 });
 
 // PUT /api/tickets/:id - Update ticket
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', requireAuth, async (req, res, next) => {
   try {
+    const id = req.params.id;
     const data = ticketUpdateSchema.parse(req.body);
 
     // Verify ticket exists
-    const existingTicket = await prisma.ticket.findUnique({
-      where: { numeroTicket: req.params.id }
+    const ticket = await prisma.ticket.findUnique({
+      where: { numeroTicket: id }
     });
 
-    if (!existingTicket) {
+    if (!ticket) {
       return res.status(404).json({
         error: { message: 'Ticket no encontrado', status: 404 }
       });
+    }
+
+    // Authorization check
+    const roles = req.user!.roles;
+    const isAdminOrGestor = roles.includes(Role.ADMIN) || roles.includes(Role.GESTOR);
+
+    if (!isAdminOrGestor) {
+      if (roles.includes(Role.TECNICO)) {
+        const u = await prisma.user.findUnique({ 
+          where: { id: req.user!.id }, 
+          include: { technician: true } 
+        });
+        if (!u?.technician || u.technician.id !== ticket.technicianId) {
+          return res.status(403).json({ error: 'Forbidden (not assigned ticket)' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
     }
 
     // Verify client exists if provided
@@ -243,7 +264,7 @@ router.put('/:id', async (req, res, next) => {
         where: { id: data.contratoId }
       });
 
-      const clientCode = data.codigoCliente || existingTicket.codigoCliente;
+      const clientCode = data.codigoCliente || ticket.codigoCliente;
       if (!contract || contract.codigoCliente !== clientCode) {
         return res.status(400).json({
           error: { message: 'Contrato no encontrado o no pertenece al cliente', status: 400 }
@@ -251,9 +272,12 @@ router.put('/:id', async (req, res, next) => {
       }
     }
 
-    const ticket = await prisma.ticket.update({
+    const updatedTicket = await prisma.ticket.update({
       where: { numeroTicket: req.params.id },
-      data,
+      data: {
+        ...data,
+        fechaUltimaActualizacion: new Date()
+      },
       include: {
         client: { select: { razonSocial: true, codigoCliente: true } },
         technician: { select: { id: true, nombre: true } },
@@ -261,14 +285,14 @@ router.put('/:id', async (req, res, next) => {
       }
     });
 
-    res.json(ticket);
+    res.json(updatedTicket);
   } catch (error) {
     next(error);
   }
 });
 
 // DELETE /api/tickets/:id - Delete ticket
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requireAuth, async (req, res, next) => {
   try {
     const ticket = await prisma.ticket.findUnique({
       where: { numeroTicket: req.params.id }
@@ -278,6 +302,24 @@ router.delete('/:id', async (req, res, next) => {
       return res.status(404).json({
         error: { message: 'Ticket no encontrado', status: 404 }
       });
+    }
+
+    // Authorization check
+    const roles = req.user!.roles;
+    const isAdminOrGestor = roles.includes(Role.ADMIN) || roles.includes(Role.GESTOR);
+
+    if (!isAdminOrGestor) {
+      if (roles.includes(Role.TECNICO)) {
+        const u = await prisma.user.findUnique({ 
+          where: { id: req.user!.id }, 
+          include: { technician: true } 
+        });
+        if (!u?.technician || u.technician.id !== ticket.technicianId) {
+          return res.status(403).json({ error: 'Forbidden (not assigned ticket)' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
     }
 
     await prisma.ticket.delete({

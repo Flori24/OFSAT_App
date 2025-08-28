@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import authRouter from './auth';
+import usersRouter from './users';
 import ticketsRouter from './tickets';
 import clientsRouter from './clients';
 import contractsRouter from './contracts';
@@ -12,6 +14,8 @@ router.get('/', (req, res) => {
     version: '1.0.0',
     status: 'running',
     endpoints: {
+      auth: '/api/auth',
+      users: '/api/users',
       tickets: '/api/tickets',
       clients: '/api/clients', 
       contracts: '/api/contracts',
@@ -21,6 +25,8 @@ router.get('/', (req, res) => {
 });
 
 // Mount subrouters
+router.use('/auth', authRouter);
+router.use('/users', usersRouter);
 router.use('/tickets', ticketsRouter);
 router.use('/clients', clientsRouter);
 router.use('/contracts', contractsRouter);
