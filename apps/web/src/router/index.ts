@@ -4,6 +4,7 @@ import TicketForm from '@/pages/TicketForm.vue';
 import Login from '@/pages/Login.vue';
 import LayoutShell from '@/components/ui/LayoutShell.vue';
 import AdminUsers from '@/pages/admin/AdminUsers.vue';
+import TicketIntervencionesView from '@/pages/TicketIntervencionesView.vue';
 import { useAuthStore } from '@/store/auth';
 
 const router = createRouter({
@@ -20,6 +21,8 @@ const router = createRouter({
         { path: 'tickets/new', component: TicketForm, meta: { requiresAuth: true, roles: ['ADMIN','GESTOR'] } },
         // Editar: cualquiera autenticado; el backend aplicará reglas finas (técnico solo si asignado)
         { path: 'tickets/:id', component: TicketForm, meta: { requiresAuth: true } },
+        // Intervenciones de un ticket - cualquiera autenticado
+        { path: 'tickets/:numero/intervenciones', component: TicketIntervencionesView, meta: { requiresAuth: true } },
         // Panel de administración - solo ADMIN
         { path: 'admin/users', component: AdminUsers, meta: { requiresAuth: true, roles: ['ADMIN'] } },
       ]

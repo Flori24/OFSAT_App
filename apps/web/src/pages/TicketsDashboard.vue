@@ -291,6 +291,13 @@
                   >
                     <i class="fas fa-edit"></i>
                   </router-link>
+                  <router-link 
+                    :to="`/tickets/${ticket.numeroTicket}/intervenciones`" 
+                    class="btn btn-sm btn-outline-success"
+                    title="Intervenciones"
+                  >
+                    <i class="fas fa-tools"></i>
+                  </router-link>
                   <button 
                     @click="deleteTicket(ticket.numeroTicket)" 
                     class="btn btn-sm btn-outline-danger"

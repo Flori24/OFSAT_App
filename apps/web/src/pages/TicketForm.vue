@@ -18,10 +18,20 @@
         </h1>
       </div>
       <div class="col-auto">
-        <router-link to="/tickets" class="btn btn-outline-secondary">
-          <i class="fas fa-arrow-left me-2"></i>
-          Volver
-        </router-link>
+        <div class="btn-group">
+          <router-link 
+            v-if="isEditing" 
+            :to="`/tickets/${ticketId}/intervenciones`" 
+            class="btn btn-primary"
+          >
+            <i class="fas fa-tools me-2"></i>
+            Intervenciones
+          </router-link>
+          <router-link to="/tickets" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>
+            Volver
+          </router-link>
+        </div>
       </div>
     </div>
 

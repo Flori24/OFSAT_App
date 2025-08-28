@@ -139,6 +139,80 @@ export interface TicketFilters {
   q?: string;
 }
 
+export interface Intervencion {
+  id: string;
+  numeroTicket: string;
+  fechaHoraProgramada: string | null;
+  fechaHoraInicio: string | null;
+  fechaHoraFin: string | null;
+  tecnicoAsignadoId: string;
+  tipoAccion: 'Diagnostico' | 'Reparacion' | 'Sustitucion' | 'Configuracion' | 'Llamada' | 'Revision';
+  descripcion: string | null;
+  estadoTarea: 'Pendiente' | 'EnCurso' | 'Finalizada' | 'Cancelada';
+  duracionMinutos: number | null;
+  costeEstimado: number | null;
+  resultado: 'Resuelto' | 'NoResuelto' | 'PendientePiezas' | 'Escalado' | null;
+  firmaClienteUrl: string | null;
+  ubicacion: 'Remota' | 'Cliente' | 'Taller' | null;
+  adjuntosJson: any;
+  materiales: Material[];
+  tecnico: {
+    id: string;
+    displayName: string;
+  };
+  totales: {
+    importeTotal: number;
+    cantidadMateriales: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Material {
+  id: string;
+  codigoArticulo: string;
+  unidadesUtilizadas: number;
+  precio: number;
+  descuento: number;
+  importeTotal: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateIntervencionInput {
+  fechaHoraProgramada?: string | null;
+  fechaHoraInicio?: string | null;
+  fechaHoraFin?: string | null;
+  tecnicoAsignadoId: string;
+  tipoAccion: string;
+  descripcion?: string;
+  estadoTarea: string;
+  costeEstimado?: number | null;
+  resultado?: string | null;
+  firmaClienteUrl?: string | null;
+  ubicacion?: string | null;
+}
+
+export interface UpdateIntervencionInput extends Partial<CreateIntervencionInput> {}
+
+export interface CreateMaterialInput {
+  codigoArticulo: string;
+  unidadesUtilizadas: number;
+  precio: number;
+  descuento?: number;
+}
+
+export interface UpdateMaterialInput extends Partial<CreateMaterialInput> {}
+
+export interface IntervencionFilters {
+  page?: number;
+  pageSize?: number;
+  estadoTarea?: string;
+  tecnicoAsignadoId?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+}
+
 
 // API methods
 export const apiService = {
@@ -243,6 +317,79 @@ export const apiService = {
   technicians: {
     list: async (): Promise<Technician[]> => {
       const response = await api.get('/api/technicians');
+      return response.data;
+    },
+  },
+
+  // Intervenciones
+  intervenciones: {
+    listByTicket: async (numeroTicket: string, filters: IntervencionFilters = {}): Promise<PaginatedResponse<Intervencion>> => {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, value.toString());
+        }
+      });
+      
+      const response = await api.get(`/api/tickets/${numeroTicket}/intervenciones?${params.toString()}`);
+      return response.data;
+    },
+
+    get: async (id: string): Promise<Intervencion> => {
+      const response = await api.get(`/api/intervenciones/${id}`);
+      return response.data;
+    },
+
+    create: async (numeroTicket: string, data: CreateIntervencionInput): Promise<Intervencion> => {
+      const response = await api.post(`/api/tickets/${numeroTicket}/intervenciones`, data);
+      return response.data;
+    },
+
+    update: async (id: string, data: UpdateIntervencionInput): Promise<Intervencion> => {
+      const response = await api.put(`/api/intervenciones/${id}`, data);
+      return response.data;
+    },
+
+    delete: async (id: string): Promise<void> => {
+      await api.delete(`/api/intervenciones/${id}`);
+    },
+
+    // Material management
+    addMaterials: async (intervencionId: string, materials: CreateMaterialInput[]): Promise<Intervencion> => {
+      const response = await api.post(`/api/intervenciones/${intervencionId}/materiales`, materials);
+      return response.data;
+    },
+
+    updateMaterial: async (intervencionId: string, materialId: string, data: UpdateMaterialInput): Promise<Intervencion> => {
+      const response = await api.put(`/api/intervenciones/${intervencionId}/materiales/${materialId}`, data);
+      return response.data;
+    },
+
+    deleteMaterial: async (intervencionId: string, materialId: string): Promise<Intervencion> => {
+      const response = await api.delete(`/api/intervenciones/${intervencionId}/materiales/${materialId}`);
+      return response.data;
+    },
+
+    // File uploads
+    uploadAdjuntos: async (intervencionId: string, files: FileList): Promise<Intervencion> => {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append('adjuntos', files[i]);
+      }
+      
+      const response = await api.post(`/api/intervenciones/${intervencionId}/adjuntos`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    },
+
+    uploadFirma: async (intervencionId: string, firmaFile: File): Promise<Intervencion> => {
+      const formData = new FormData();
+      formData.append('firma', firmaFile);
+      
+      const response = await api.post(`/api/intervenciones/${intervencionId}/firma`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       return response.data;
     },
   },
