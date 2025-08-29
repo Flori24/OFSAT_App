@@ -1,7 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { intervencionService } from '../services/intervencionService';
 import { requireAuth } from '../middleware/auth';
-import { upload } from '../middleware/upload';
+import { handleFileUpload, handleSignatureUpload } from '../middleware/upload';
+import { auditService } from '../services/auditService';
+import { generalRateLimit, uploadRateLimit, createRateLimit } from '../middleware/rateLimiting';
 import {
   CreateIntervencionSchema,
   UpdateIntervencionSchema,
@@ -73,17 +75,21 @@ router.get('/intervenciones/:id',
 
 // POST /tickets/:numero/intervenciones - Crear intervención
 router.post('/tickets/:numero/intervenciones',
+  generalRateLimit,
+  createRateLimit,
   requireAuth,
   requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { numero } = req.params;
     const data = CreateIntervencionSchema.parse(req.body);
+    const auditContext = auditService.getContextFromRequest(req);
     
     const intervencion = await intervencionService.create(
       numero,
       data,
       req.user!.id,
-      req.user!.roles
+      req.user!.roles,
+      auditContext
     );
     
     res.status(201).json(intervencion);
@@ -92,17 +98,20 @@ router.post('/tickets/:numero/intervenciones',
 
 // PUT /intervenciones/:id - Editar intervención
 router.put('/intervenciones/:id',
+  generalRateLimit,
   requireAuth,
   requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const data = UpdateIntervencionSchema.parse(req.body);
+    const auditContext = auditService.getContextFromRequest(req);
     
     const intervencion = await intervencionService.update(
       id,
       data,
       req.user!.id,
-      req.user!.roles
+      req.user!.roles,
+      auditContext
     );
     
     res.json(intervencion);
@@ -111,15 +120,18 @@ router.put('/intervenciones/:id',
 
 // DELETE /intervenciones/:id - Borrar intervención
 router.delete('/intervenciones/:id',
+  generalRateLimit,
   requireAuth,
   requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
+    const auditContext = auditService.getContextFromRequest(req);
     
     await intervencionService.delete(
       id,
       req.user!.id,
-      req.user!.roles
+      req.user!.roles,
+      auditContext
     );
     
     res.status(204).send();
@@ -128,10 +140,13 @@ router.delete('/intervenciones/:id',
 
 // POST /intervenciones/:id/materiales - Agregar materiales
 router.post('/intervenciones/:id/materiales',
+  generalRateLimit,
+  createRateLimit,
   requireAuth,
   requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
+    const auditContext = auditService.getContextFromRequest(req);
     
     // Validar si es un array o un objeto single
     let materiales;
@@ -146,7 +161,8 @@ router.post('/intervenciones/:id/materiales',
       id,
       materiales,
       req.user!.id,
-      req.user!.roles
+      req.user!.roles,
+      auditContext
     );
     
     res.json(intervencion);
@@ -155,18 +171,21 @@ router.post('/intervenciones/:id/materiales',
 
 // PUT /intervenciones/:id/materiales/:materialId - Editar material
 router.put('/intervenciones/:id/materiales/:materialId',
+  generalRateLimit,
   requireAuth,
   requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { id, materialId } = req.params;
     const data = UpdateMaterialSchema.parse(req.body);
+    const auditContext = auditService.getContextFromRequest(req);
     
     const intervencion = await intervencionService.updateMaterial(
       id,
       materialId,
       data,
       req.user!.id,
-      req.user!.roles
+      req.user!.roles,
+      auditContext
     );
     
     res.json(intervencion);
@@ -175,33 +194,40 @@ router.put('/intervenciones/:id/materiales/:materialId',
 
 // DELETE /intervenciones/:id/materiales/:materialId - Eliminar material
 router.delete('/intervenciones/:id/materiales/:materialId',
+  generalRateLimit,
   requireAuth,
   requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { id, materialId } = req.params;
+    const auditContext = auditService.getContextFromRequest(req);
     
     const intervencion = await intervencionService.deleteMaterial(
       id,
       materialId,
       req.user!.id,
-      req.user!.roles
+      req.user!.roles,
+      auditContext
     );
     
     res.json(intervencion);
   })
 );
 
-// POST /intervenciones/:id/adjuntos - Subir adjuntos
+// POST /intervenciones/:id/adjuntos - Subir adjuntos con S3/MinIO
 router.post('/intervenciones/:id/adjuntos',
+  uploadRateLimit,
   requireAuth,
   requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
-  upload.array('files', 5),
+  handleFileUpload('adjuntos'),
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const files = req.files as Express.Multer.File[];
+    const uploadResults = (req as any).uploadResults;
     
-    if (!files || files.length === 0) {
-      return res.status(400).json({ error: 'No se enviaron archivos' });
+    if (!uploadResults || uploadResults.length === 0) {
+      return res.status(400).json({ 
+        error: 'No se enviaron archivos válidos',
+        code: 'NO_FILES'
+      });
     }
     
     // Obtener adjuntos actuales
@@ -213,14 +239,13 @@ router.post('/intervenciones/:id/adjuntos',
     
     const currentFiles = intervencion.adjuntosJson?.files || [];
     
-    // Agregar nuevos archivos
-    const newFiles = files.map(file => ({
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: file.originalname,
-      filename: file.filename,
-      url: `/uploads/${file.filename}`, // En producción sería S3 URL
-      size: file.size,
-      contentType: file.mimetype,
+    // Agregar nuevos archivos con URLs de S3/MinIO
+    const newFiles = uploadResults.map((result: any) => ({
+      id: result.key,
+      name: result.originalName,
+      url: result.url,
+      size: result.size,
+      contentType: result.contentType,
       uploadedAt: new Date().toISOString(),
       uploadedBy: req.user!.id
     }));
@@ -229,6 +254,7 @@ router.post('/intervenciones/:id/adjuntos',
       files: [...currentFiles, ...newFiles]
     };
     
+    const auditContext = auditService.getContextFromRequest(req);
     const updated = await intervencionService.updateAdjuntos(
       id,
       adjuntosJson,
@@ -237,7 +263,7 @@ router.post('/intervenciones/:id/adjuntos',
     );
     
     res.json({
-      message: 'Archivos subidos correctamente',
+      message: 'Archivos subidos correctamente a S3/MinIO',
       files: newFiles,
       intervencion: updated
     });
@@ -289,6 +315,34 @@ router.delete('/intervenciones/:id/adjuntos/:fileId',
     
     res.json({
       message: 'Archivo eliminado correctamente',
+      intervencion: updated
+    });
+  })
+);
+
+// POST /intervenciones/:id/firma - Subir firma digital
+router.post('/intervenciones/:id/firma',
+  uploadRateLimit,
+  requireAuth,
+  requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
+  handleSignatureUpload,
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const signatureResult = (req as any).signatureUploadResult;
+    const auditContext = auditService.getContextFromRequest(req);
+    
+    // Update intervention with signature URL
+    const updated = await intervencionService.update(
+      id,
+      { firmaClienteUrl: signatureResult.url },
+      req.user!.id,
+      req.user!.roles,
+      auditContext
+    );
+    
+    res.json({
+      message: 'Firma digital subida correctamente',
+      signatureUrl: signatureResult.url,
       intervencion: updated
     });
   })

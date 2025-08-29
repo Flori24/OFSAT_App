@@ -87,6 +87,7 @@ model User {
   roles        Role[]    // Postgres enum array
   technician   Technician?
   intervenciones Intervencion[] @relation("IntervencionesDeTecnico")
+  auditLogs    AuditLog[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
@@ -190,6 +191,11 @@ model Intervencion {
   @@index([numeroTicket])
   @@index([tecnicoAsignadoId])
   @@index([estadoTarea])
+  @@index([fechaHoraInicio])
+  @@index([tecnicoAsignadoId, estadoTarea])
+  @@index([tecnicoAsignadoId, fechaHoraInicio])
+  @@index([fechaHoraInicio, estadoTarea])
+  @@index([numeroTicket, estadoTarea])
 }
 
 model IntervencionMaterial {
@@ -206,4 +212,22 @@ model IntervencionMaterial {
 
   @@index([intervencionId])
   @@index([codigoArticulo])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  entity    String   // tabla afectada (ej: "Intervencion", "IntervencionMaterial")
+  entityId  String   // ID del registro afectado
+  action    String   // "CREATE", "UPDATE", "DELETE"
+  before    Json?    // estado anterior (null para CREATE)
+  after     Json?    // estado nuevo (null para DELETE)
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
 }

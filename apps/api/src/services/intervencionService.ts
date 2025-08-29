@@ -8,7 +8,7 @@ import {
   IntervencionResponse,
   MaterialResponse 
 } from '../schemas/intervencion';
-import { auditService } from './auditService';
+import { auditService, AuditContext } from './auditService';
 
 const prisma = new PrismaClient();
 
@@ -247,7 +247,8 @@ export class IntervencionService {
     numeroTicket: string,
     data: CreateIntervencionDto,
     userId: string,
-    userRoles: string[]
+    userRoles: string[],
+    auditContext: AuditContext
   ) {
     await this.verifyTicketNotClosed(numeroTicket);
     await this.verifyUserPermissions(userId, userRoles, 'write', undefined, data.tecnicoAsignadoId);
@@ -279,7 +280,7 @@ export class IntervencionService {
     });
 
     // Registrar auditoría
-    await auditService.logIntervencionCreate(userId, intervencion);
+    await auditService.logIntervencionChange('CREATE', intervencion.id, auditContext, null, intervencion);
     
     return this.formatIntervencionResponse(intervencion);
   }
@@ -289,7 +290,8 @@ export class IntervencionService {
     id: string,
     data: UpdateIntervencionDto,
     userId: string,
-    userRoles: string[]
+    userRoles: string[],
+    auditContext: AuditContext
   ) {
     await this.verifyUserPermissions(userId, userRoles, 'write', id);
 
@@ -338,13 +340,13 @@ export class IntervencionService {
     });
 
     // Registrar auditoría
-    await auditService.logIntervencionUpdate(userId, id, before, intervencion);
+    await auditService.logIntervencionChange('UPDATE', id, auditContext, before, intervencion);
 
     return this.formatIntervencionResponse(intervencion);
   }
 
   // Eliminar intervención
-  async delete(id: string, userId: string, userRoles: string[]) {
+  async delete(id: string, userId: string, userRoles: string[], auditContext: AuditContext) {
     await this.verifyUserPermissions(userId, userRoles, 'delete', id);
 
     // Obtener datos para auditoría antes de eliminar
@@ -362,7 +364,7 @@ export class IntervencionService {
 
     // Registrar auditoría
     if (intervencion) {
-      await auditService.logIntervencionDelete(userId, intervencion);
+      await auditService.logIntervencionChange('DELETE', id, auditContext, intervencion, null);
     }
 
     return { success: true };
@@ -373,7 +375,8 @@ export class IntervencionService {
     intervencionId: string,
     materiales: CreateMaterialDto[],
     userId: string,
-    userRoles: string[]
+    userRoles: string[],
+    auditContext: AuditContext
   ) {
     await this.verifyUserPermissions(userId, userRoles, 'write', intervencionId);
 
@@ -395,6 +398,18 @@ export class IntervencionService {
         data: materialesData
       });
 
+      // Log each material creation
+      for (const material of materialesData) {
+        await auditService.logMaterialChange(
+          'CREATE',
+          `batch-${Date.now()}`, // We don't have individual IDs from createMany
+          intervencionId,
+          auditContext,
+          null,
+          material
+        );
+      }
+
       const intervencion = await tx.intervencion.findUnique({
         where: { id: intervencionId },
         include: {
@@ -413,7 +428,8 @@ export class IntervencionService {
     materialId: string,
     data: UpdateMaterialDto,
     userId: string,
-    userRoles: string[]
+    userRoles: string[],
+    auditContext: AuditContext
   ) {
     await this.verifyUserPermissions(userId, userRoles, 'write', intervencionId);
 
@@ -438,10 +454,20 @@ export class IntervencionService {
         updateData.importeTotal = this.calculateMaterialTotal(unidades, precio, descuento);
       }
 
-      await tx.intervencionMaterial.update({
+      const updated = await tx.intervencionMaterial.update({
         where: { id: materialId },
         data: updateData
       });
+
+      // Log material update
+      await auditService.logMaterialChange(
+        'UPDATE',
+        materialId,
+        intervencionId,
+        auditContext,
+        current,
+        updated
+      );
 
       const intervencion = await tx.intervencion.findUnique({
         where: { id: intervencionId },
@@ -460,7 +486,8 @@ export class IntervencionService {
     intervencionId: string,
     materialId: string,
     userId: string,
-    userRoles: string[]
+    userRoles: string[],
+    auditContext: AuditContext
   ) {
     await this.verifyUserPermissions(userId, userRoles, 'write', intervencionId);
 
@@ -478,6 +505,16 @@ export class IntervencionService {
       await tx.intervencionMaterial.delete({
         where: { id: materialId }
       });
+
+      // Log material deletion
+      await auditService.logMaterialChange(
+        'DELETE',
+        materialId,
+        intervencionId,
+        auditContext,
+        exists,
+        null
+      );
 
       const intervencion = await tx.intervencion.findUnique({
         where: { id: intervencionId },

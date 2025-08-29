@@ -1,113 +1,205 @@
-import { PrismaClient } from '@prisma/client';
+/**
+ * Enhanced audit service with comprehensive logging capabilities
+ */
 
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
+import { Request } from 'express';
+import { Prisma } from '@prisma/client';
 
-export interface AuditLogEntry {
-  userId: string;
-  action: 'CREATE' | 'UPDATE' | 'DELETE';
-  entity: 'INTERVENCION' | 'INTERVENCION_MATERIAL';
-  entityId: string;
-  before?: any;
-  after?: any;
-  timestamp: Date;
-  metadata?: any;
+export interface AuditContext {
+  userId?: string;
+  ip?: string;
+  userAgent?: string;
 }
 
 export class AuditService {
-  
-  // Log audit entry
-  async logAction(entry: Omit<AuditLogEntry, 'timestamp'>) {
+  /**
+   * Extract audit context from Express request
+   */
+  getContextFromRequest(req: Request): AuditContext {
+    return {
+      userId: req.user?.id,
+      ip: req.ip || req.connection.remoteAddress,
+      userAgent: req.get('User-Agent'),
+    };
+  }
+
+  /**
+   * Log intervention changes
+   */
+  async logIntervencionChange(
+    action: 'CREATE' | 'UPDATE' | 'DELETE',
+    intervencionId: string,
+    context: AuditContext,
+    before?: any,
+    after?: any
+  ) {
     try {
-      // In a real application, you might want to store this in a separate audit table
-      // For now, we'll log to console and potentially store in a JSON field
-      
-      const auditEntry: AuditLogEntry = {
-        ...entry,
-        timestamp: new Date()
-      };
-
-      console.log('AUDIT LOG:', JSON.stringify(auditEntry, null, 2));
-
-      // You could also store this in a database table like:
-      // await prisma.auditLog.create({ data: auditEntry });
-      
-      return auditEntry;
+      await prisma.auditLog.create({
+        data: {
+          userId: context.userId,
+          entity: 'Intervencion',
+          entityId: intervencionId,
+          action,
+          before: before ? JSON.parse(JSON.stringify(this.sanitizeForAudit(before))) : null,
+          after: after ? JSON.parse(JSON.stringify(this.sanitizeForAudit(after))) : null,
+          ip: context.ip,
+          userAgent: context.userAgent,
+        },
+      });
     } catch (error) {
-      console.error('Error logging audit entry:', error);
-      // Don't throw - audit logging shouldn't break the main operation
+      console.error('Failed to log intervention audit:', error);
     }
   }
 
-  // Log intervention creation
-  async logIntervencionCreate(userId: string, intervencion: any) {
-    return this.logAction({
-      userId,
-      action: 'CREATE',
-      entity: 'INTERVENCION',
-      entityId: intervencion.id,
-      after: this.sanitizeForAudit(intervencion)
+  /**
+   * Log material changes
+   */
+  async logMaterialChange(
+    action: 'CREATE' | 'UPDATE' | 'DELETE',
+    materialId: string,
+    intervencionId: string,
+    context: AuditContext,
+    before?: any,
+    after?: any
+  ) {
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: context.userId,
+          entity: 'IntervencionMaterial',
+          entityId: materialId,
+          action,
+          before: before ? JSON.parse(JSON.stringify(this.sanitizeForAudit(before))) : null,
+          after: after ? JSON.parse(JSON.stringify(this.sanitizeForAudit(after))) : null,
+          ip: context.ip,
+          userAgent: context.userAgent,
+        },
+      });
+
+      // Also log the parent intervention was modified
+      await this.logIntervencionChange(
+        'UPDATE',
+        intervencionId,
+        context,
+        null,
+        { reason: `Material ${action.toLowerCase()}: ${materialId}` }
+      );
+    } catch (error) {
+      console.error('Failed to log material audit:', error);
+    }
+  }
+
+  /**
+   * Log file upload events
+   */
+  async logFileUpload(
+    entityType: 'Intervencion' | 'IntervencionMaterial',
+    entityId: string,
+    fileType: 'adjunto' | 'firma',
+    fileName: string,
+    fileSize: number,
+    context: AuditContext
+  ) {
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: context.userId,
+          entity: `${entityType}File`,
+          entityId,
+          action: 'CREATE',
+          before: Prisma.JsonNull,
+          after: {
+            fileType,
+            fileName,
+            fileSize,
+            uploadedAt: new Date(),
+          },
+          ip: context.ip,
+          userAgent: context.userAgent,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to log file upload audit:', error);
+    }
+  }
+
+  /**
+   * Log security events (rejected files, rate limiting, etc.)
+   */
+  async logSecurityEvent(
+    eventType: 'FILE_REJECTED' | 'RATE_LIMITED' | 'VIRUS_DETECTED' | 'UNAUTHORIZED_ACCESS' | 'REPORT_ACCESS',
+    details: any,
+    context: AuditContext
+  ) {
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: context.userId,
+          entity: 'Security',
+          entityId: `${eventType}-${Date.now()}`,
+          action: eventType,
+          before: Prisma.JsonNull,
+          after: details,
+          ip: context.ip,
+          userAgent: context.userAgent,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to log security event:', error);
+    }
+  }
+
+  /**
+   * Get comprehensive audit trail
+   */
+  async getAuditTrail(entity?: string, entityId?: string, limit: number = 100) {
+    const where: any = {};
+    if (entity) where.entity = entity;
+    if (entityId) where.entityId = entityId;
+
+    return prisma.auditLog.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            username: true,
+            displayName: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
     });
   }
 
-  // Log intervention update
-  async logIntervencionUpdate(userId: string, intervencionId: string, before: any, after: any) {
-    return this.logAction({
-      userId,
-      action: 'UPDATE',
-      entity: 'INTERVENCION',
-      entityId: intervencionId,
-      before: this.sanitizeForAudit(before),
-      after: this.sanitizeForAudit(after)
+  /**
+   * Get audit statistics
+   */
+  async getAuditStats(fromDate?: Date, toDate?: Date) {
+    const where: any = {};
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = fromDate;
+      if (toDate) where.createdAt.lte = toDate;
+    }
+
+    const stats = await prisma.auditLog.groupBy({
+      by: ['entity', 'action'],
+      where,
+      _count: true,
     });
+
+    return stats.reduce((acc, stat) => {
+      const key = `${stat.entity}.${stat.action}`;
+      acc[key] = stat._count;
+      return acc;
+    }, {} as Record<string, number>);
   }
 
-  // Log intervention deletion
-  async logIntervencionDelete(userId: string, intervencion: any) {
-    return this.logAction({
-      userId,
-      action: 'DELETE',
-      entity: 'INTERVENCION',
-      entityId: intervencion.id,
-      before: this.sanitizeForAudit(intervencion)
-    });
-  }
-
-  // Log material operations
-  async logMaterialCreate(userId: string, intervencionId: string, material: any) {
-    return this.logAction({
-      userId,
-      action: 'CREATE',
-      entity: 'INTERVENCION_MATERIAL',
-      entityId: material.id,
-      after: this.sanitizeForAudit(material),
-      metadata: { intervencionId }
-    });
-  }
-
-  async logMaterialUpdate(userId: string, intervencionId: string, materialId: string, before: any, after: any) {
-    return this.logAction({
-      userId,
-      action: 'UPDATE',
-      entity: 'INTERVENCION_MATERIAL',
-      entityId: materialId,
-      before: this.sanitizeForAudit(before),
-      after: this.sanitizeForAudit(after),
-      metadata: { intervencionId }
-    });
-  }
-
-  async logMaterialDelete(userId: string, intervencionId: string, material: any) {
-    return this.logAction({
-      userId,
-      action: 'DELETE',
-      entity: 'INTERVENCION_MATERIAL',
-      entityId: material.id,
-      before: this.sanitizeForAudit(material),
-      metadata: { intervencionId }
-    });
-  }
-
-  // Remove sensitive data from audit logs
+  /**
+   * Remove sensitive data from audit logs
+   */
   private sanitizeForAudit(data: any): any {
     if (!data) return data;
 
@@ -115,29 +207,39 @@ export class AuditService {
     
     // Remove sensitive fields
     delete sanitized.passwordHash;
-    delete sanitized.firmaClienteUrl; // Keep URL out of logs for security
     
     // Convert dates to ISO strings for consistent logging
     Object.keys(sanitized).forEach(key => {
       if (sanitized[key] instanceof Date) {
         sanitized[key] = sanitized[key].toISOString();
       }
+      // Convert Prisma Decimal to number for JSON serialization
+      if (sanitized[key] && typeof sanitized[key].toString === 'function' && 
+          sanitized[key].constructor.name === 'Decimal') {
+        sanitized[key] = parseFloat(sanitized[key].toString());
+      }
     });
 
     return sanitized;
   }
 
-  // Get audit history for an entity
-  async getAuditHistory(entity: 'INTERVENCION' | 'INTERVENCION_MATERIAL', entityId: string) {
-    // In a real implementation, you would query the audit table
-    // For now, return a placeholder
-    return {
-      entity,
-      entityId,
-      history: [
-        // This would be actual audit entries from the database
-      ]
-    };
+  /**
+   * Clean old audit logs (for GDPR compliance)
+   */
+  async cleanOldAuditLogs(olderThanDays: number = 365) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+
+    const result = await prisma.auditLog.deleteMany({
+      where: {
+        createdAt: {
+          lt: cutoffDate,
+        },
+      },
+    });
+
+    console.log(`Cleaned ${result.count} audit log entries older than ${olderThanDays} days`);
+    return result.count;
   }
 }
 
