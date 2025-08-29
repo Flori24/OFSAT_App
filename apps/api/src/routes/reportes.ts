@@ -42,7 +42,7 @@ const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextF
 router.get('/intervenciones/por-tecnico',
   generalRateLimit,
   requireAuth,
-  requireRole(['ADMIN', 'GESTOR', 'TECNICO']),
+  requireRole(['ADMIN', 'SUPERVISOR', 'TECNICO']),
   asyncHandler(async (req: Request, res: Response) => {
     const filters = TecnicoReportFiltersSchema.parse(req.query);
     const auditContext = auditService.getContextFromRequest(req);
@@ -77,7 +77,7 @@ router.get('/intervenciones/por-tecnico',
 router.get('/intervenciones/por-ticket/:numero',
   generalRateLimit,
   requireAuth,
-  requireRole(['ADMIN', 'GESTOR', 'TECNICO']),
+  requireRole(['ADMIN', 'SUPERVISOR', 'TECNICO']),
   asyncHandler(async (req: Request, res: Response) => {
     const { numero } = TicketNumberParamSchema.parse(req.params);
     const auditContext = auditService.getContextFromRequest(req);
@@ -114,7 +114,7 @@ router.get('/intervenciones/por-ticket/:numero',
 router.get('/dashboard',
   generalRateLimit,
   requireAuth,
-  requireRole(['ADMIN', 'GESTOR', 'TECNICO']),
+  requireRole(['ADMIN', 'SUPERVISOR', 'TECNICO']),
   asyncHandler(async (req: Request, res: Response) => {
     const auditContext = auditService.getContextFromRequest(req);
     

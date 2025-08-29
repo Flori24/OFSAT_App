@@ -43,9 +43,9 @@ enum UrgenciaTicket {
 
 enum Role {
   ADMIN
-  GESTOR
   TECNICO
-  LECTOR
+  SUPERVISOR
+  USER
 }
 
 enum TipoAccion {
@@ -85,7 +85,7 @@ model User {
   passwordHash String
   isActive     Boolean   @default(true)
   roles        Role[]    // Postgres enum array
-  technician   Technician?
+  tecnico      Tecnico?
   intervenciones Intervencion[] @relation("IntervencionesDeTecnico")
   auditLogs    AuditLog[]
   createdAt    DateTime  @default(now())
@@ -106,17 +106,29 @@ model Client {
   @@index([razonSocial])
 }
 
-model Technician {
-  id        String  @id @default(cuid())
-  nombre    String
-  email     String?
-  telefono  String?
-  perfil    String?
-  tickets   Ticket[]
-  userId    String?  @unique
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+model Tecnico {
+  id             String   @id @default(cuid())
+  usuarioId      String   @unique      // FK a Usuario.id
+  nombre         String
+  email          String   @unique
+  telefono       String?
+  activo         Boolean  @default(true)
+  especialidades String[] // ["Informatica","ImpHW","ImpSW"] etc.
+  zonas          String[] // ["Andorra la Vella","Escaldes",...]
+  tarifaHora     Decimal? @db.Decimal(10,2)
+  capacidadDia   Int?     // minutos disponibles por día (p.ej. 420)
+  color          String?  // color hex para calendario
+  firmaUrl       String?  // imagen firma
+  notas          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  @@index([nombre])
+  usuario User @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tickets Ticket[]
+
+  @@index([activo])
+  @@index([email])
+  @@index([usuarioId])
 }
 
 model Contract {
@@ -160,7 +172,7 @@ model Ticket {
   fechaUltimaActualizacion DateTime? 
   fechaCierre             DateTime?
   technicianId            String?
-  technician              Technician? @relation(fields: [technicianId], references: [id])
+  technician              Tecnico? @relation(fields: [technicianId], references: [id])
   intervenciones          Intervencion[]
   @@index([codigoCliente, estadoTicket, urgencia, technicianId])
   @@index([fechaCreacion])

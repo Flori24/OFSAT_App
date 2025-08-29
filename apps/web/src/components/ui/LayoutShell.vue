@@ -46,6 +46,26 @@
               <span class="nav-text">Nuevo Ticket</span>
             </router-link>
           </li>
+          
+          <!-- Configuración Section -->
+          <li class="nav-item mt-3 mb-2" v-if="canManageTecnicos || auth.hasRole('ADMIN')">
+            <h6 class="text-uppercase text-xs font-weight-bolder opacity-8 text-white-50 px-3">
+              Configuración
+            </h6>
+          </li>
+          
+          <li class="nav-item" v-if="canManageTecnicos">
+            <router-link 
+              to="/config/tecnicos" 
+              class="nav-link d-flex align-items-center py-3"
+              active-class="active"
+              @click="closeSidebarOnMobile"
+            >
+              <i class="fas fa-user-cog me-3"></i>
+              <span class="nav-text">Técnicos</span>
+            </router-link>
+          </li>
+          
           <li class="nav-item" v-if="auth.hasRole('ADMIN')">
             <router-link 
               to="/admin/users" 
@@ -133,7 +153,11 @@ const showUserMenu = ref(false);
 const sidebarOpen = ref(false);
 
 const canCreateTickets = computed(() => {
-  return auth.hasRole('ADMIN') || auth.hasRole('GESTOR');
+  return auth.hasRole('ADMIN') || auth.hasRole('SUPERVISOR');
+});
+
+const canManageTecnicos = computed(() => {
+  return auth.hasRole('ADMIN') || auth.hasRole('SUPERVISOR');
 });
 
 function toggleUserMenu() {

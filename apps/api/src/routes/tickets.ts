@@ -116,7 +116,7 @@ router.get('/:id', requireAuth, async (req, res, next) => {
 });
 
 // POST /api/tickets - Create new ticket
-router.post('/', requireAuth, requireRoles(Role.ADMIN, Role.GESTOR), async (req, res, next) => {
+router.post('/', requireAuth, requireRoles(Role.ADMIN, Role.SUPERVISOR), async (req, res, next) => {
   try {
     const data = ticketCreateSchema.parse(req.body);
 
@@ -153,7 +153,7 @@ router.post('/', requireAuth, requireRoles(Role.ADMIN, Role.GESTOR), async (req,
 
     // Verify technician exists if provided
     if (data.technicianId) {
-      const technician = await prisma.technician.findUnique({
+      const technician = await prisma.tecnico.findUnique({
         where: { id: data.technicianId }
       });
 
@@ -216,7 +216,7 @@ router.put('/:id', requireAuth, async (req, res, next) => {
 
     // Authorization check
     const roles = req.user!.roles;
-    const isAdminOrGestor = roles.includes(Role.ADMIN) || roles.includes(Role.GESTOR);
+    const isAdminOrGestor = roles.includes(Role.ADMIN) || roles.includes(Role.SUPERVISOR);
 
     if (!isAdminOrGestor) {
       if (roles.includes(Role.TECNICO)) {
@@ -247,7 +247,7 @@ router.put('/:id', requireAuth, async (req, res, next) => {
 
     // Verify technician exists if provided
     if (data.technicianId) {
-      const technician = await prisma.technician.findUnique({
+      const technician = await prisma.tecnico.findUnique({
         where: { id: data.technicianId }
       });
 
@@ -306,7 +306,7 @@ router.delete('/:id', requireAuth, async (req, res, next) => {
 
     // Authorization check
     const roles = req.user!.roles;
-    const isAdminOrGestor = roles.includes(Role.ADMIN) || roles.includes(Role.GESTOR);
+    const isAdminOrGestor = roles.includes(Role.ADMIN) || roles.includes(Role.SUPERVISOR);
 
     if (!isAdminOrGestor) {
       if (roles.includes(Role.TECNICO)) {

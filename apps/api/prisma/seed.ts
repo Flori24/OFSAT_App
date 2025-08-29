@@ -14,12 +14,32 @@ async function main() {
   // Clear existing data
   await prisma.ticket.deleteMany();
   await prisma.contract.deleteMany();
-  await prisma.technician.deleteMany();
+  
+  // Try to clear technician data - may not exist
+  try {
+    await prisma.technician.deleteMany();
+  } catch (e) {
+    console.log('No technician table to clear (expected)');
+  }
+  
+  // Try to clear tecnico data - may not exist  
+  try {
+    await prisma.tecnico.deleteMany();
+  } catch (e) {
+    console.log('No tecnico table to clear (expected)');
+  }
+  
   await prisma.client.deleteMany();
-  await prisma.user.deleteMany();
+  
+  // Clear User data if table exists
+  try {
+    await prisma.user.deleteMany();
+  } catch (e) {
+    console.log('User table does not exist yet - expected on first run');
+  }
 
   // Usuarios base
-  const [admin, gestor, tecnico, lector] = await Promise.all([
+  const [admin, supervisor, tecnicoUser, user] = await Promise.all([
     prisma.user.upsert({
       where: { username: 'admin' },
       update: {},
@@ -32,14 +52,14 @@ async function main() {
       },
     }),
     prisma.user.upsert({
-      where: { username: 'gestor' },
+      where: { username: 'supervisor' },
       update: {},
       create: {
-        username: 'gestor',
-        email: 'gestor@ofsat.local',
-        displayName: 'Gestor',
-        passwordHash: await pass('Gestor.2025!'),
-        roles: [Role.GESTOR],
+        username: 'supervisor',
+        email: 'supervisor@ofsat.local',
+        displayName: 'Supervisor',
+        passwordHash: await pass('Supervisor.2025!'),
+        roles: [Role.SUPERVISOR],
       },
     }),
     prisma.user.upsert({
@@ -54,14 +74,14 @@ async function main() {
       },
     }),
     prisma.user.upsert({
-      where: { username: 'lector' },
+      where: { username: 'user' },
       update: {},
       create: {
-        username: 'lector',
-        email: 'lector@ofsat.local',
-        displayName: 'Lector',
-        passwordHash: await pass('Lector.2025!'),
-        roles: [Role.LECTOR],
+        username: 'user',
+        email: 'user@ofsat.local',
+        displayName: 'Usuario',
+        passwordHash: await pass('User.2025!'),
+        roles: [Role.USER],
       },
     }),
   ]);
@@ -128,51 +148,97 @@ async function main() {
     ]
   });
 
-  // Seed Technicians
-  const technicians = await prisma.technician.createMany({
-    data: [
-      {
-        nombre: 'Roberto Mendoza',
-        email: 'roberto.mendoza@ofsat.com',
-        telefono: '099-123-456',
-        perfil: 'Informático'
-      },
-      {
-        nombre: 'Sandra López',
-        email: 'sandra.lopez@ofsat.com',
-        telefono: '099-234-567',
-        perfil: 'Imp HW'
-      },
-      {
-        nombre: 'Miguel Torres',
-        email: 'miguel.torres@ofsat.com',
-        telefono: '099-345-678',
-        perfil: 'Imp SW'
-      },
-      {
-        nombre: 'Carmen Díaz',
-        email: 'carmen.diaz@ofsat.com',
-        telefono: '099-456-789',
-        perfil: 'Informático'
-      },
-      {
-        nombre: 'Eduardo Ramos',
-        email: 'eduardo.ramos@ofsat.com',
-        telefono: '099-567-890',
-        perfil: 'Imp HW'
-      }
-    ]
-  });
-
-  // Get created technicians for reference
-  const techniciansList = await prisma.technician.findMany();
-
-  // Enlaza técnico (si existe) con user tecnico
-  if (techniciansList[0]) {
-    await prisma.technician.update({
-      where: { id: techniciansList[0].id },
-      data: { userId: tecnico.id },
+  // Create Tecnicos if the table exists
+  let tecnicos: any[] = [];
+  let tecnicosList: any[] = [];
+  
+  try {
+    tecnicos = await Promise.all([
+      prisma.tecnico.create({
+        data: {
+          usuarioId: tecnicoUser.id,
+          nombre: 'Roberto Mendoza',
+          email: 'roberto.mendoza@ofsat.com',
+          telefono: '+376-123-456',
+          activo: true,
+          especialidades: ['Informatica'],
+          zonas: ['Andorra la Vella'],
+          tarifaHora: 45.0,
+          capacidadDia: 480,
+          color: '#007bff',
+          notas: 'Técnico especializado en informática'
+        }
+      }),
+      prisma.tecnico.create({
+        data: {
+          usuarioId: supervisor.id,
+          nombre: 'Sandra López',
+          email: 'sandra.lopez@ofsat.com',
+          telefono: '+376-234-567',
+          activo: true,
+          especialidades: ['ImpHW'],
+          zonas: ['Escaldes-Engordany'],
+          tarifaHora: 42.0,
+          capacidadDia: 450,
+          color: '#28a745',
+          notas: 'Especialista en hardware de impresoras'
+        }
+      }),
+      prisma.tecnico.create({
+        data: {
+          usuarioId: admin.id, // Admin can also be a tecnico
+          nombre: 'Miguel Torres',
+          email: 'miguel.torres@ofsat.com',
+          telefono: '+376-345-678',
+          activo: true,
+          especialidades: ['ImpSW', 'Informatica'],
+          zonas: ['Andorra la Vella', 'Encamp'],
+          tarifaHora: 50.0,
+          capacidadDia: 420,
+          color: '#dc3545',
+          notas: 'Técnico senior con experiencia en software y sistemas'
+        }
+      })
+    ]);
+    tecnicosList = tecnicos;
+    console.log('Created tecnicos successfully');
+  } catch (e) {
+    console.log('Tecnico table does not exist yet - creating legacy technician entries');
+    
+    // Fallback to old technician model if new one doesn't exist
+    const technicians = await prisma.technician.createMany({
+      data: [
+        {
+          nombre: 'Roberto Mendoza',
+          email: 'roberto.mendoza@ofsat.com',
+          telefono: '099-123-456',
+          perfil: 'Informático'
+        },
+        {
+          nombre: 'Sandra López',
+          email: 'sandra.lopez@ofsat.com',
+          telefono: '099-234-567',
+          perfil: 'Imp HW'
+        },
+        {
+          nombre: 'Miguel Torres',
+          email: 'miguel.torres@ofsat.com',
+          telefono: '099-345-678',
+          perfil: 'Imp SW'
+        }
+      ]
     });
+    
+    // Get created technicians for reference
+    tecnicosList = await prisma.technician.findMany();
+    
+    // Link first technician with the tecnico user
+    if (tecnicosList[0]) {
+      await prisma.technician.update({
+        where: { id: tecnicosList[0].id },
+        data: { userId: tecnicoUser.id },
+      });
+    }
   }
 
   // Seed Contracts
@@ -277,7 +343,7 @@ async function main() {
       urgencia: UrgenciaTicket.MEDIA,
       detalle: 'Impresora HP LaserJet presenta atasco frecuente en bandeja principal. Cliente reporta que ocurre cada 10-15 impresiones.',
       fechaUltimaActualizacion: new Date('2024-08-01T14:20:00'),
-      technicianId: techniciansList[1]?.id
+      technicianId: tecnicosList[1]?.id
     },
     {
       numeroTicket: generateTicketNumber(1),
@@ -298,7 +364,7 @@ async function main() {
       urgencia: UrgenciaTicket.ALTA,
       detalle: 'Solicitud de instalación de aplicación bancaria específica en PC Dell. Requiere permisos especiales de administrador.',
       fechaUltimaActualizacion: new Date('2024-08-02T16:30:00'),
-      technicianId: techniciansList[0]?.id
+      technicianId: tecnicosList[0]?.id
     },
     {
       numeroTicket: generateTicketNumber(2),
@@ -319,7 +385,7 @@ async function main() {
       urgencia: UrgenciaTicket.NORMAL,
       detalle: 'Actualización de driver de impresora Epson WorkForce. La versión actual presenta incompatibilidades con Windows 11.',
       fechaUltimaActualizacion: new Date('2024-08-03T13:10:00'),
-      technicianId: techniciansList[2]?.id
+      technicianId: tecnicosList[2]?.id
     },
     {
       numeroTicket: generateTicketNumber(3),
@@ -360,7 +426,7 @@ async function main() {
       urgencia: UrgenciaTicket.NORMAL,
       detalle: 'Mantenimiento preventivo programado para impresora Canon. Incluye limpieza de rodillos y calibración de colores.',
       fechaUltimaActualizacion: new Date('2024-08-05T15:45:00'),
-      technicianId: techniciansList[4]?.id
+      technicianId: tecnicosList[2]?.id
     },
     {
       numeroTicket: generateTicketNumber(5),
@@ -399,7 +465,7 @@ async function main() {
       urgencia: UrgenciaTicket.ALTA,
       detalle: 'Reconfiguración de parámetros de red de impresora HP. Cambio de dirección IP y configuración de SNMP.',
       fechaUltimaActualizacion: new Date('2024-08-07T16:00:00'),
-      technicianId: techniciansList[2]?.id
+      technicianId: tecnicosList[2]?.id
     },
     {
       numeroTicket: generateTicketNumber(7),
@@ -438,7 +504,7 @@ async function main() {
       urgencia: UrgenciaTicket.ALTA,
       detalle: 'Reemplazo de unidad fusora en impresora Epson. Equipo presenta rayas en impresiones. Repuesto en proceso RMA.',
       fechaUltimaActualizacion: new Date('2024-08-09T15:20:00'),
-      technicianId: techniciansList[4]?.id
+      technicianId: tecnicosList[2]?.id
     },
     {
       numeroTicket: generateTicketNumber(9),
@@ -457,7 +523,7 @@ async function main() {
       urgencia: UrgenciaTicket.NORMAL,
       detalle: 'Configuración de acceso WiFi corporativo en equipos portátiles del personal de campo de la Intendencia.',
       fechaUltimaActualizacion: new Date('2024-08-10T12:00:00'),
-      technicianId: techniciansList[0]?.id
+      technicianId: tecnicosList[0]?.id
     },
     {
       numeroTicket: generateTicketNumber(10),
@@ -476,7 +542,7 @@ async function main() {
       urgencia: UrgenciaTicket.NORMAL,
       detalle: 'Actualización de documentación de procedimientos técnicos para el área de soporte de la Universidad.',
       fechaUltimaActualizacion: new Date('2024-08-11T16:30:00'),
-      technicianId: techniciansList[3]?.id
+      technicianId: tecnicosList[0]?.id
     },
     {
       numeroTicket: generateTicketNumber(11),
@@ -533,7 +599,7 @@ async function main() {
       urgencia: UrgenciaTicket.MEDIA,
       detalle: 'Configuración de aplicación de digitalización de documentos. Integración con sistema bancario interno.',
       fechaUltimaActualizacion: new Date('2024-08-14T17:00:00'),
-      technicianId: techniciansList[2]?.id
+      technicianId: tecnicosList[2]?.id
     },
     {
       numeroTicket: generateTicketNumber(14),
@@ -552,7 +618,7 @@ async function main() {
       urgencia: UrgenciaTicket.NORMAL,
       detalle: 'Migración y configuración de cuentas de correo del personal médico a nuevo servidor Exchange.',
       fechaUltimaActualizacion: new Date('2024-08-15T14:45:00'),
-      technicianId: techniciansList[0]?.id
+      technicianId: tecnicosList[0]?.id
     },
     {
       numeroTicket: generateTicketNumber(15),
@@ -591,7 +657,7 @@ async function main() {
       urgencia: UrgenciaTicket.MEDIA,
       detalle: 'Calibración de colores en impresora Canon. Los colores impresos no coinciden con los mostrados en pantalla.',
       fechaUltimaActualizacion: new Date('2024-08-17T16:15:00'),
-      technicianId: techniciansList[1]?.id
+      technicianId: tecnicosList[1]?.id
     },
     {
       numeroTicket: generateTicketNumber(17),
@@ -632,7 +698,7 @@ async function main() {
       urgencia: UrgenciaTicket.NORMAL,
       detalle: 'Instalación de driver actualizado de impresora HP en nuevas estaciones de trabajo incorporadas al área.',
       fechaUltimaActualizacion: new Date('2024-08-19T17:30:00'),
-      technicianId: techniciansList[3]?.id
+      technicianId: tecnicosList[0]?.id
     },
     {
       numeroTicket: generateTicketNumber(19),
@@ -651,7 +717,7 @@ async function main() {
       urgencia: UrgenciaTicket.EXTREMA,
       detalle: 'Configuración urgente de reglas de firewall tras detección de intento de acceso no autorizado. Revisión de logs de seguridad.',
       fechaUltimaActualizacion: new Date('2024-08-20T18:00:00'),
-      technicianId: techniciansList[0]?.id,
+      technicianId: tecnicosList[0]?.id,
       fechaCierre: new Date('2024-08-20T18:30:00')
     }
   ];
@@ -665,16 +731,16 @@ async function main() {
 
   console.log('Database seeded successfully!');
   console.log(`Created:`);
-  console.log(`- 4 users (admin, gestor, tecnico, lector)`);
+  console.log(`- 4 users (admin, supervisor, tecnico, user)`);
   console.log(`- ${clients.count} clients`);
-  console.log(`- ${technicians.count} technicians`);
+  console.log(`- ${tecnicos.length} tecnicos`);
   console.log(`- ${contracts.count} contracts`);
   console.log(`- ${ticketData.length} tickets`);
   console.log(`\nDefault user credentials:`);
   console.log(`- admin / Admin.2025!`);
-  console.log(`- gestor / Gestor.2025!`);
+  console.log(`- supervisor / Supervisor.2025!`);
   console.log(`- tecnico / Tecnico.2025!`);
-  console.log(`- lector / Lector.2025!`);
+  console.log(`- user / User.2025!`);
 }
 
 main()

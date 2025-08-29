@@ -213,6 +213,67 @@ export interface IntervencionFilters {
   fechaHasta?: string;
 }
 
+// Tecnico interfaces
+export interface Tecnico {
+  id: string;
+  usuarioId: string;
+  nombre: string;
+  email: string;
+  telefono?: string;
+  activo: boolean;
+  especialidades: string[];
+  zonas: string[];
+  tarifaHora?: number;
+  capacidadDia?: number;
+  color?: string;
+  firmaUrl?: string;
+  notas?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TecnicoFilters {
+  q?: string;
+  activo?: string;
+  especialidad?: string;
+  zona?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface CreateTecnicoInput {
+  usuarioId: string;
+  nombre: string;
+  email: string;
+  telefono?: string;
+  activo?: boolean;
+  especialidades?: string[];
+  zonas?: string[];
+  tarifaHora?: number;
+  capacidadDia?: number;
+  color?: string;
+  firmaUrl?: string;
+  notas?: string;
+}
+
+export interface UpdateTecnicoInput extends Partial<CreateTecnicoInput> {}
+
+export interface TecnicoKpis {
+  intervencionesEsteMes: number;
+  duracionMedia: number;
+  tasaResolucion: number;
+  ingresosMes: number;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  email?: string;
+  displayName: string;
+  roles: string[];
+  isActive: boolean;
+}
+
 
 // API methods
 export const apiService = {
@@ -313,12 +374,126 @@ export const apiService = {
     },
   },
 
-  // Technicians
+  // Technicians (legacy)
   technicians: {
     list: async (): Promise<Technician[]> => {
       const response = await api.get('/api/technicians');
       return response.data;
     },
+  },
+
+  // Tecnicos (new model)
+  tecnicos: {
+    list: async (filters: TecnicoFilters = {}): Promise<PaginatedResponse<Tecnico>> => {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, value.toString());
+        }
+      });
+      
+      const response = await api.get(`/api/tecnicos?${params.toString()}`);
+      return response.data;
+    },
+
+    get: async (id: string): Promise<Tecnico> => {
+      const response = await api.get(`/api/tecnicos/${id}`);
+      return response.data;
+    },
+
+    create: async (data: CreateTecnicoInput): Promise<Tecnico> => {
+      const response = await api.post('/api/tecnicos', data);
+      return response.data;
+    },
+
+    update: async (id: string, data: UpdateTecnicoInput): Promise<Tecnico> => {
+      const response = await api.put(`/api/tecnicos/${id}`, data);
+      return response.data;
+    },
+
+    delete: async (id: string): Promise<void> => {
+      await api.delete(`/api/tecnicos/${id}`);
+    },
+
+    activate: async (id: string): Promise<void> => {
+      await api.post(`/api/tecnicos/${id}/activate`);
+    },
+
+    deactivate: async (id: string): Promise<void> => {
+      await api.post(`/api/tecnicos/${id}/deactivate`);
+    },
+
+    getKpis: async (id: string): Promise<TecnicoKpis> => {
+      const response = await api.get(`/api/tecnicos/${id}/kpis`);
+      return response.data;
+    },
+
+    getRecentInterventions: async (id: string, limit: number = 10): Promise<any[]> => {
+      const response = await api.get(`/api/tecnicos/${id}/interventions?limit=${limit}`);
+      return response.data;
+    },
+
+    getAuditLogs: async (id: string, limit: number = 20): Promise<any[]> => {
+      const response = await api.get(`/api/tecnicos/${id}/audit-logs?limit=${limit}`);
+      return response.data;
+    },
+
+    exportCsv: async (filters: TecnicoFilters = {}): Promise<Blob> => {
+      const params = new URLSearchParams();
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, value.toString());
+        }
+      });
+      
+      const response = await api.get(`/api/tecnicos/export/csv?${params.toString()}`, {
+        responseType: 'blob'
+      });
+      return response.data;
+    },
+
+    importCsv: async (file: File): Promise<{ created: number; updated: number; errors: string[] }> => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await api.post('/api/tecnicos/import/csv', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    },
+
+    uploadFirma: async (id: string, file: File): Promise<Tecnico> => {
+      const formData = new FormData();
+      formData.append('firma', file);
+      
+      const response = await api.post(`/api/tecnicos/${id}/firma`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    },
+  },
+
+  // Users
+  users: {
+    list: async (filters: { q?: string; roles?: string[] } = {}): Promise<User[]> => {
+      const params = new URLSearchParams();
+      if (filters.q) params.append('q', filters.q);
+      if (filters.roles) {
+        filters.roles.forEach(role => params.append('roles[]', role));
+      }
+      
+      const response = await api.get(`/api/users?${params.toString()}`);
+      return response.data;
+    },
+
+    get: async (id: string): Promise<User> => {
+      const response = await api.get(`/api/users/${id}`);
+      return response.data;
+    },
+
+    searchUsers: async (filters: { q: string; roles?: string[] }): Promise<User[]> => {
+      return await apiService.users.list(filters);
+    }
   },
 
   // Intervenciones

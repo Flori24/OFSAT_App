@@ -5,6 +5,9 @@ import Login from '@/pages/Login.vue';
 import LayoutShell from '@/components/ui/LayoutShell.vue';
 import AdminUsers from '@/pages/admin/AdminUsers.vue';
 import TicketIntervencionesView from '@/pages/TicketIntervencionesView.vue';
+import TecnicosList from '@/pages/config/TecnicosList.vue';
+import TecnicoForm from '@/pages/config/TecnicoForm.vue';
+import TecnicoDetail from '@/pages/config/TecnicoDetail.vue';
 import { useAuthStore } from '@/store/auth';
 
 const router = createRouter({
@@ -17,12 +20,19 @@ const router = createRouter({
       component: LayoutShell,
       children: [
         { path: 'tickets', component: TicketsDashboard, meta: { requiresAuth: true } },
-        // Solo ADMIN/GESTOR puede crear
-        { path: 'tickets/new', component: TicketForm, meta: { requiresAuth: true, roles: ['ADMIN','GESTOR'] } },
+        // Solo ADMIN/SUPERVISOR puede crear
+        { path: 'tickets/new', component: TicketForm, meta: { requiresAuth: true, roles: ['ADMIN','SUPERVISOR'] } },
         // Editar: cualquiera autenticado; el backend aplicará reglas finas (técnico solo si asignado)
         { path: 'tickets/:id', component: TicketForm, meta: { requiresAuth: true } },
         // Intervenciones de un ticket - cualquiera autenticado
         { path: 'tickets/:numero/intervenciones', component: TicketIntervencionesView, meta: { requiresAuth: true } },
+        
+        // Gestión de técnicos - ADMIN y SUPERVISOR
+        { path: 'config/tecnicos', component: TecnicosList, meta: { requiresAuth: true, roles: ['ADMIN', 'SUPERVISOR'] } },
+        { path: 'config/tecnicos/nuevo', component: TecnicoForm, meta: { requiresAuth: true, roles: ['ADMIN', 'SUPERVISOR'] } },
+        { path: 'config/tecnicos/:id', component: TecnicoDetail, meta: { requiresAuth: true, roles: ['ADMIN', 'SUPERVISOR'] } },
+        { path: 'config/tecnicos/:id/editar', component: TecnicoForm, meta: { requiresAuth: true, roles: ['ADMIN', 'SUPERVISOR'] } },
+        
         // Panel de administración - solo ADMIN
         { path: 'admin/users', component: AdminUsers, meta: { requiresAuth: true, roles: ['ADMIN'] } },
       ]

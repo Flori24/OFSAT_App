@@ -39,7 +39,7 @@ router.get('/me', requireAuth, async (req, res) => {
   try {
     const me = await prisma.user.findUnique({
       where: { id: req.user!.id },
-      include: { technician: true },
+      include: { tecnico: true },
     });
     
     if (!me) return res.status(404).json({ error: 'User not found' });
@@ -50,7 +50,7 @@ router.get('/me', requireAuth, async (req, res) => {
         username: me.username, 
         displayName: me.displayName, 
         roles: me.roles, 
-        technicianId: me.technician?.id || null 
+        technicianId: me.tecnico?.id || null 
       } 
     });
   } catch (error) {

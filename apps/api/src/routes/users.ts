@@ -9,7 +9,7 @@ const router = Router();
 router.get('/', requireAuth, requireRoles(Role.ADMIN), async (req, res) => {
   try {
     const users = await prisma.user.findMany({ 
-      include: { technician: true }, 
+      include: { tecnico: true }, 
       orderBy: { username: 'asc' } 
     });
     
@@ -20,7 +20,7 @@ router.get('/', requireAuth, requireRoles(Role.ADMIN), async (req, res) => {
       displayName: u.displayName, 
       roles: u.roles, 
       isActive: u.isActive,
-      technicianId: u.technician?.id || null,
+      tecnicoId: u.tecnico?.id || null,
       createdAt: u.createdAt,
       updatedAt: u.updatedAt
     })));
@@ -35,7 +35,7 @@ router.get('/:id', requireAuth, requireRoles(Role.ADMIN), async (req, res) => {
   try {
     const u = await prisma.user.findUnique({ 
       where: { id: req.params.id }, 
-      include: { technician: true } 
+      include: { tecnico: true } 
     });
     
     if (!u) return res.status(404).json({ error: 'User not found' });
@@ -47,7 +47,7 @@ router.get('/:id', requireAuth, requireRoles(Role.ADMIN), async (req, res) => {
       displayName: u.displayName, 
       roles: u.roles, 
       isActive: u.isActive,
-      technicianId: u.technician?.id || null,
+      tecnicoId: u.tecnico?.id || null,
       createdAt: u.createdAt,
       updatedAt: u.updatedAt
     });
@@ -77,7 +77,7 @@ router.post('/', requireAuth, requireRoles(Role.ADMIN), async (req, res) => {
         email, 
         displayName, 
         passwordHash: hash, 
-        roles: roles?.length ? roles : [Role.LECTOR] 
+        roles: roles?.length ? roles : [Role.USER] 
       },
     });
     
@@ -145,39 +145,39 @@ router.post('/:id/reset-password', requireAuth, requireRoles(Role.ADMIN), async 
   }
 });
 
-// POST /api/users/:id/link-technician - Link user to technician (ADMIN only)
-router.post('/:id/link-technician', requireAuth, requireRoles(Role.ADMIN), async (req, res) => {
-  const { technicianId } = req.body || {};
+// POST /api/users/:id/link-tecnico - Link user to tecnico (ADMIN only)
+router.post('/:id/link-tecnico', requireAuth, requireRoles(Role.ADMIN), async (req, res) => {
+  const { tecnicoId } = req.body || {};
   
-  if (!technicianId) return res.status(400).json({ error: 'technicianId required' });
+  if (!tecnicoId) return res.status(400).json({ error: 'tecnicoId required' });
   
   try {
-    await prisma.technician.update({ 
-      where: { id: technicianId }, 
-      data: { userId: req.params.id } 
+    await prisma.tecnico.update({ 
+      where: { id: tecnicoId }, 
+      data: { usuarioId: req.params.id } 
     });
     
     res.json({ ok: true });
   } catch (error) {
-    console.error('Link technician error:', error);
+    console.error('Link tecnico error:', error);
     if (error.code === 'P2025') {
-      return res.status(404).json({ error: 'Technician not found' });
+      return res.status(404).json({ error: 'Tecnico not found' });
     }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// POST /api/users/:id/unlink-technician - Unlink user from technician (ADMIN only)
-router.post('/:id/unlink-technician', requireAuth, requireRoles(Role.ADMIN), async (req, res) => {
+// POST /api/users/:id/unlink-tecnico - Unlink user from tecnico (ADMIN only)
+router.post('/:id/unlink-tecnico', requireAuth, requireRoles(Role.ADMIN), async (req, res) => {
   try {
-    await prisma.technician.updateMany({ 
-      where: { userId: req.params.id }, 
-      data: { userId: null } 
+    await prisma.tecnico.updateMany({ 
+      where: { usuarioId: req.params.id }, 
+      data: { usuarioId: null } 
     });
     
     res.json({ ok: true });
   } catch (error) {
-    console.error('Unlink technician error:', error);
+    console.error('Unlink tecnico error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

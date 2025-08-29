@@ -40,7 +40,7 @@ const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextF
 // GET /tickets/:numero/intervenciones - Lista intervenciones de un ticket
 router.get('/tickets/:numero/intervenciones', 
   requireAuth,
-  requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
+  requireRole(['ADMIN', 'TECNICO', 'SUPERVISOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { numero } = req.params;
     const filters = IntervencionFiltersSchema.parse(req.query);
@@ -59,7 +59,7 @@ router.get('/tickets/:numero/intervenciones',
 // GET /intervenciones/:id - Detalle de intervención
 router.get('/intervenciones/:id',
   requireAuth,
-  requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
+  requireRole(['ADMIN', 'TECNICO', 'SUPERVISOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     
@@ -78,7 +78,7 @@ router.post('/tickets/:numero/intervenciones',
   generalRateLimit,
   createRateLimit,
   requireAuth,
-  requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
+  requireRole(['ADMIN', 'TECNICO', 'SUPERVISOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { numero } = req.params;
     const data = CreateIntervencionSchema.parse(req.body);
@@ -100,7 +100,7 @@ router.post('/tickets/:numero/intervenciones',
 router.put('/intervenciones/:id',
   generalRateLimit,
   requireAuth,
-  requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
+  requireRole(['ADMIN', 'TECNICO', 'SUPERVISOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const data = UpdateIntervencionSchema.parse(req.body);
@@ -122,7 +122,7 @@ router.put('/intervenciones/:id',
 router.delete('/intervenciones/:id',
   generalRateLimit,
   requireAuth,
-  requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
+  requireRole(['ADMIN', 'TECNICO', 'SUPERVISOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const auditContext = auditService.getContextFromRequest(req);
@@ -143,7 +143,7 @@ router.post('/intervenciones/:id/materiales',
   generalRateLimit,
   createRateLimit,
   requireAuth,
-  requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
+  requireRole(['ADMIN', 'TECNICO', 'SUPERVISOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const auditContext = auditService.getContextFromRequest(req);
@@ -173,7 +173,7 @@ router.post('/intervenciones/:id/materiales',
 router.put('/intervenciones/:id/materiales/:materialId',
   generalRateLimit,
   requireAuth,
-  requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
+  requireRole(['ADMIN', 'TECNICO', 'SUPERVISOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { id, materialId } = req.params;
     const data = UpdateMaterialSchema.parse(req.body);
@@ -196,7 +196,7 @@ router.put('/intervenciones/:id/materiales/:materialId',
 router.delete('/intervenciones/:id/materiales/:materialId',
   generalRateLimit,
   requireAuth,
-  requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
+  requireRole(['ADMIN', 'TECNICO', 'SUPERVISOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { id, materialId } = req.params;
     const auditContext = auditService.getContextFromRequest(req);
@@ -217,7 +217,7 @@ router.delete('/intervenciones/:id/materiales/:materialId',
 router.post('/intervenciones/:id/adjuntos',
   uploadRateLimit,
   requireAuth,
-  requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
+  requireRole(['ADMIN', 'TECNICO', 'SUPERVISOR']),
   handleFileUpload('adjuntos'),
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -273,7 +273,7 @@ router.post('/intervenciones/:id/adjuntos',
 // DELETE /intervenciones/:id/adjuntos/:fileId - Eliminar adjunto
 router.delete('/intervenciones/:id/adjuntos/:fileId',
   requireAuth,
-  requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
+  requireRole(['ADMIN', 'TECNICO', 'SUPERVISOR']),
   asyncHandler(async (req: Request, res: Response) => {
     const { id, fileId } = req.params;
     
@@ -324,7 +324,7 @@ router.delete('/intervenciones/:id/adjuntos/:fileId',
 router.post('/intervenciones/:id/firma',
   uploadRateLimit,
   requireAuth,
-  requireRole(['ADMIN', 'TECNICO', 'GESTOR']),
+  requireRole(['ADMIN', 'TECNICO', 'SUPERVISOR']),
   handleSignatureUpload,
   asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
